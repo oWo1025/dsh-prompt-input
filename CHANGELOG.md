@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.3 — 隐藏搜索框的原生清除按钮
+
+`<input type="search">` 在 Chromium 里自带一个蓝色圆点的清除按钮，和面板右上角自己的 ✕ 撞在一起。
+用 `::-webkit-search-cancel-button { appearance: none }` 关掉，只留面板那个 ✕（它同时负责收起面板）。
+
 ## 0.3.2 — 编辑器排版修正（真机截图发现）
 
 - 「删页」按钮被挤成两行（`删` / `页`）：行内 `input` 的 `width:100%` 把按钮顶出了容器。

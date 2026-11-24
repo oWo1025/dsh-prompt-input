@@ -29,7 +29,7 @@ window.__ModuleLoader__.load({
     const API = '/quick-input'
 
     /** 客户端构建号：页面加载时回报给宿主，`GET /quick-input/health` 里能看到跑的是哪一份。 */
-    const CLIENT_BUILD = '0.3.2+build1'
+    const CLIENT_BUILD = '0.3.3+build1'
 
     /** 文案命名空间：注册槽位时带上它，槽位就会把 `t` 交给组件。 */
     const NS = 'quick-input'
@@ -230,6 +230,8 @@ window.__ModuleLoader__.load({
 .dsq-searchicon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--dsw-alias-label-caption,#98a2b3);pointer-events:none}
 .dsq-search{box-sizing:border-box;width:100%;height:30px;padding:0 10px 0 28px;border:1px solid transparent;border-radius:var(--dsw-radius-md,10px);background:var(--dsw-alias-bg-module-platform,rgba(127,127,127,.07));color:inherit;font-family:inherit;font-size:12px;line-height:16px;outline:none;transition:border-color .12s ease,background-color .12s ease}
 .dsq-search::placeholder{color:var(--dsw-alias-label-secondary,#667085);opacity:.9}
+/* 关掉 Chromium 的搜索清除按钮：它会和面板自己的 ✕ 撞在一起，而且自带蓝色圆点 */
+.dsq-search::-webkit-search-cancel-button,.dsq-search::-webkit-search-decoration{-webkit-appearance:none;appearance:none}
 .dsq-search:focus{border-color:var(--dsw-alias-border-selected,var(--dsw-alias-brand-primary-new-color,var(--dsw-alias-brand-primary-new-colorprimary-new-color,var(--dsw-alias-brand-primary,#4d6bfe))));background:var(--dsw-alias-bg-layer-2,#fff);box-shadow:0 0 0 3px color-mix(in srgb,var(--dsw-alias-brand-primary-new-color,var(--dsw-alias-brand-primary-new-colorprimary-new-color,var(--dsw-alias-brand-primary,#4d6bfe))) 14%,transparent)}
 /* 编辑态：搜索框让位给状态说明条 */
 .dsq-editbar{flex:1;min-width:0;display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px dashed color-mix(in srgb,var(--dsw-alias-brand-primary-new-color,var(--dsw-alias-brand-primary-new-colorprimary-new-color,var(--dsw-alias-brand-primary,#4d6bfe))) 42%,transparent);border-radius:var(--dsw-radius-md,10px);background:color-mix(in srgb,var(--dsw-alias-brand-primary-new-color,var(--dsw-alias-brand-primary-new-colorprimary-new-color,var(--dsw-alias-brand-primary,#4d6bfe))) 8%,transparent);color:var(--dsw-alias-label-primary,#1f2328);font-size:12px;line-height:16px}
