@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.2 — 编辑器排版修正（真机截图发现）
+
+- 「删页」按钮被挤成两行（`删` / `页`）：行内 `input` 的 `width:100%` 把按钮顶出了容器。
+  现在 `.dsq-row .dsq-input{flex:1;min-width:0;width:auto}`，按钮 `flex:none;white-space:nowrap`。
+- 「页名」标签改为独占一行，与编辑器里的「名称 / 内容」一致；输入框与「删页」并排。
+
+## 0.3.1 — 修正强调色 token
+
+0.3.0 里用的 `--dsw-alias-brand-primary-new-color` 在已发布主题里**不存在**：实际名字是
+`--dsw-alias-brand-primary-new-colorprimary-new-color`（上游变量名的重复后缀 bug），
+于是整条链路回退到 `--dsw-alias-brand-primary`（近黑），界面又变回灰的。
+
+现在改成三级回退：
+
+```css
+var(--dsw-alias-brand-primary-new-color,                 /* 若上游修正拼写 */
+    var(--dsw-alias-brand-primary-new-colorprimary-new-color,  /* 当前发布的名字 */
+        var(--dsw-alias-brand-primary, #4d6bfe)))          /* 兜底墨色 */
+```
+
+这样：上游改回来 → 自动用正名；没改 → 用实际存在的那个名字；两者都没有 → 退回原生墨色。
+
 ## 0.3.0 — 改名 dsh-prompt-input
 
 - 包名 `dsh-quick-input` → **`dsh-prompt-input`**，与上游彻底分开（npm 上原名属于原作者）。
