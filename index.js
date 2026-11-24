@@ -20,7 +20,7 @@ import { defaultPresets, normalizePresets } from './presets.js'
 export const name = 'quick-input'
 
 /** 与 package.json 对齐，只用于 /health 自证。 */
-const VERSION = '0.1.0'
+const VERSION = '0.2.2'
 
 const ROUTE_PATH = '/quick-input'
 const BODY_LIMIT = 256 * 1024

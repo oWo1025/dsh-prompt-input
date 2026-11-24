@@ -25,11 +25,11 @@ window.__ModuleLoader__.load({
     // ------------------------------------------------------------ 常量
 
     const TOGGLE_SLOT = 'conversation.input.left'
-    const PANEL_SLOT = 'conversation.input.overlay'
+    const PANEL_SLOT = 'shell.overlay'
     const API = '/quick-input'
 
     /** 客户端构建号：页面加载时回报给宿主，`GET /quick-input/health` 里能看到跑的是哪一份。 */
-    const CLIENT_BUILD = '0.1.0+build8'
+    const CLIENT_BUILD = '0.2.2+build1'
 
     /** 文案命名空间：注册槽位时带上它，槽位就会把 `t` 交给组件。 */
     const NS = 'quick-input'
@@ -84,6 +84,13 @@ window.__ModuleLoader__.load({
         insertInert: '当前输入框不可编辑',
         insertNoInput: '这个位置插不进去：输入框没接上',
         insertConflict: '草稿刚变过，再点一次',
+        searchPlaceholder: '搜索 Prompt…',
+        noResults: '没有匹配「{q}」',
+        searchCount: '{n} 条结果 · ↑↓ 选择 · Enter 插入',
+        editCellShort: '✎ 点击可编辑',
+        previewMeta: '{page} · {n} 字',
+        previewHint: '点击插入 · 拖动标题栏可移动位置',
+        shortcutToggle: '打开 / 收起快捷输入',
       },
       en: {
         toggleShow: 'Show quick input (docked left of the composer)',
@@ -129,6 +136,13 @@ window.__ModuleLoader__.load({
         insertInert: 'The composer is not editable right now',
         insertNoInput: 'Cannot insert here: the composer is not connected',
         insertConflict: 'The draft just changed — click again',
+        searchPlaceholder: 'Search prompts…',
+        noResults: 'Nothing matches "{q}"',
+        searchCount: '{n} results · ↑↓ to move · Enter to insert',
+        editCellShort: '✎ click to edit',
+        previewMeta: '{page} · {n} chars',
+        previewHint: 'Click to insert · drag the header to move',
+        shortcutToggle: 'Toggle quick input',
       },
     }
 
@@ -166,65 +180,94 @@ window.__ModuleLoader__.load({
     const MAX_CELL_TEXT = 2000
 
     /**
-     * 面板形态：
-     *   true  → 常驻贴在输入框左边，高度与输入框卡片一致（默认；窗口太窄时退回上面浮层）
-     *   false → 固定成输入框上方的一块浮层（旧形态）
-     * 侧挂时渲染后自测一次：探测点落在自己身上才保留，否则退回浮层。
+     * 气泡是「锚在 ⊞ 旁边的浮层」，不再和输入框卡片等高：
+     * 宽度固定（窄窗口钳到视口内），高度上限固定，内容多了自己滚。
      */
-    const SIDE_BY_SIDE = true
-
-    /** 量不到输入框卡片高度时的兜底高度（≈ 空草稿时卡片的高度）。 */
-    const DEFAULT_CARD_HEIGHT = 104
-
-    /**
-     * 面板的最小高度：3 行 × 两行文字（24px）+ 行距 + 控制栏 + 内边距。
-     * 空草稿的输入框卡片约 102px，比这个矮，所以面板会上下各外扩几像素；
-     * 草稿变长、卡片超过这个高度时，两者就严格等高。
-     */
-    const MIN_PANEL_HEIGHT = 116
-
-    /**
-     * 面板宽度：不写死，按「输入框左边到会话列左边缘」的实测空隙自适应。
-     * 空隙不够就窄一点，窄到下限还放不下才退回上方浮层。
-     */
-    const PANEL_MIN_WIDTH = 120
-    const PANEL_MAX_WIDTH = 232
-    /** 面板与输入框之间的缝。 */
+    const PANEL_WIDTH = 420
+    const PANEL_MAX_HEIGHT = 460
+    /** 气泡与锚点之间的缝、以及离视口边缘的最小留白。 */
     const PANEL_GAP = 8
+    const VIEWPORT_MARGIN = 12
 
     const CSS = `
-.dsq-btn{box-sizing:border-box;width:28px;height:28px;flex:none;display:grid;place-items:center;padding:0;border:0;border-radius:999px;background:var(--dsw-specific-selector,var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12)));color:var(--dsw-alias-label-primary,#1f2328);cursor:pointer;transition:background-color .12s ease}
-.dsq-btn:hover{background:var(--dsw-alias-interactive-bg-hover-solid,var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.2)))}
-.dsq-btn-on{color:var(--dsw-alias-brand-primary,#4d6bfe)}
-.dsq-panel{position:absolute;z-index:40;box-sizing:border-box;max-width:calc(100vw - 24px);display:flex;flex-direction:column;gap:3px;padding:4px;border-radius:var(--dsw-radius-panel,12px);background:var(--dsw-alias-bg-overlay,var(--dsw-alias-bg-layer-1,#fff));border:1px solid var(--dsw-alias-border-l2,rgba(0,0,0,.14));box-shadow:var(--dsw-elevation-soft,0 8px 28px rgba(0,0,0,.18));color:var(--dsw-alias-label-primary,#1f2328);text-align:left;font-size:11px;line-height:12px}
-.dsq-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
-.dsq-body-scroll{overflow-y:auto}
-.dsq-grid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:3px}
-.dsq-cell{box-sizing:border-box;min-height:18px;display:flex;align-items:flex-start;gap:2px;padding:2px 4px;border:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.1));border-radius:6px;background:transparent;color:var(--dsw-alias-label-primary,#1f2328);font-size:11px;line-height:12px;text-align:left;overflow-wrap:anywhere;cursor:pointer;transition:background-color .12s ease,border-color .12s ease}
-.dsq-cell:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));border-color:var(--dsw-alias-border-l2,rgba(0,0,0,.2))}
-.dsq-cell-label{flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.dsq-cell-mark{margin-left:auto;font-size:9px;line-height:12px;opacity:.55}
-.dsq-cell-empty{justify-content:center;align-items:center;border-style:dashed;color:var(--dsw-alias-state-idle-primary,#98a2b3);font-size:12px}
-.dsq-bar{display:flex;align-items:center;gap:2px;flex:none;height:14px;font-size:10px;line-height:14px;color:var(--dsw-alias-label-secondary,#667085)}
-.dsq-mini{box-sizing:border-box;flex:none;height:14px;padding:0 3px;border:0;border-radius:4px;background:transparent;color:inherit;font-size:10px;line-height:14px;cursor:pointer}
+.dsq-btn{box-sizing:border-box;width:28px;height:28px;flex:none;display:grid;place-items:center;padding:0;border:0;border-radius:999px;background:transparent;color:var(--dsw-alias-label-secondary,#667085);cursor:pointer;transition:background-color .12s ease,color .12s ease}
+.dsq-btn:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#1f2328)}
+.dsq-btn-on{color:var(--dsw-alias-brand-primary,#4d6bfe);background:var(--dsw-alias-bg-module-platform,rgba(127,127,127,.1))}
+
+.dsq-pop{position:fixed;z-index:60;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:10px;border-radius:var(--dsw-radius-lg,16px);background:var(--dsw-alias-bg-layer-2,#fff);color:var(--dsw-alias-label-primary,#1f2328);text-align:left;font-size:12px;line-height:16px;pointer-events:auto;overflow:hidden;border:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.08));box-shadow:var(--dsw-elevation-panel,0 12px 32px rgba(16,24,40,.14));animation:dsq-in .14s ease-out}
+@keyframes dsq-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.dsq-pop{animation:none}}
+
+.dsq-head{display:flex;align-items:center;gap:6px;flex:none}
+.dsq-searchwrap{position:relative;flex:1;min-width:0;display:flex}
+.dsq-searchicon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--dsw-alias-label-caption,#98a2b3);pointer-events:none}
+.dsq-search{box-sizing:border-box;width:100%;height:30px;padding:0 10px 0 28px;border:1px solid transparent;border-radius:var(--dsw-radius-md,10px);background:var(--dsw-alias-bg-module-platform,rgba(127,127,127,.07));color:inherit;font-family:inherit;font-size:12px;line-height:16px;outline:none;transition:border-color .12s ease,background-color .12s ease}
+.dsq-search::placeholder{color:var(--dsw-alias-label-caption,#98a2b3)}
+.dsq-search:focus{border-color:var(--dsw-alias-border-selected,var(--dsw-alias-brand-primary,#4d6bfe));background:var(--dsw-alias-bg-layer-2,#fff)}
+.dsq-x{box-sizing:border-box;flex:none;width:26px;height:26px;padding:0;border:0;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary,#667085);font-size:15px;line-height:1;cursor:pointer}
+.dsq-x:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#1f2328)}
+
+/* 内容区：普通态定高 3 行（换页高度不变），编辑态才自适应并可滚 */
+.dsq-body{flex:0 0 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.dsq-body-auto{flex:1 1 auto;min-height:120px;overflow-y:auto;scrollbar-width:thin}
+.dsq-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:52px;gap:6px;height:168px;overflow-y:auto;padding-right:2px;scrollbar-width:thin}
+.dsq-card{box-sizing:border-box;display:flex;flex-direction:column;gap:1px;align-items:flex-start;justify-content:flex-start;padding:7px 8px;border:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.08));border-radius:var(--dsw-radius-md,10px);background:transparent;color:inherit;font-family:inherit;font-size:12px;line-height:16px;text-align:left;cursor:pointer;overflow:hidden;transition:background-color .12s ease,border-color .12s ease,transform .1s ease}
+.dsq-card:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1));border-color:var(--dsw-alias-border-l2,rgba(0,0,0,.16))}
+.dsq-card:active{transform:scale(.985)}
+.dsq-card:focus-visible{outline:none;border-color:var(--dsw-alias-border-selected,var(--dsw-alias-brand-primary,#4d6bfe));box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 22%,transparent)}
+.dsq-card-label{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;width:100%;overflow-wrap:anywhere;font-weight:500}
+.dsq-card-sub{width:100%;font-size:10px;line-height:12px;color:var(--dsw-alias-label-caption,#98a2b3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dsq-card-empty{align-items:center;justify-content:center;border-style:dashed;color:var(--dsw-alias-label-caption,#98a2b3);font-size:14px;font-weight:400}
+
+.dsq-results{display:flex;flex-direction:column;gap:2px;height:168px;overflow-y:auto;padding-right:2px;scrollbar-width:thin}
+.dsq-item{box-sizing:border-box;display:flex;align-items:center;gap:8px;height:34px;flex:none;padding:0 8px;border:0;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:inherit;font-family:inherit;font-size:12px;text-align:left;cursor:pointer}
+.dsq-item:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1))}
+.dsq-item-on{background:var(--dsw-alias-bg-module-platform,rgba(127,127,127,.1));box-shadow:inset 2px 0 0 var(--dsw-alias-brand-primary,#4d6bfe)}
+.dsq-item-label{flex:none;max-width:46%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.dsq-item-snippet{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary,#667085);font-size:11px}
+.dsq-item-page{flex:none;font-size:10px;line-height:16px;color:var(--dsw-alias-label-caption,#98a2b3);padding:0 6px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.08))}
+
+/* 页签行（在底部）：位置固定，换页不会上下跳 */
+.dsq-tabsrow{display:flex;align-items:center;gap:6px;flex:none;min-width:0;overflow:hidden}
+.dsq-tabs{display:flex;align-items:center;gap:4px;flex:1 1 0;min-width:0;overflow-x:auto;scrollbar-width:none;padding:1px}
+.dsq-tabs::-webkit-scrollbar{display:none}
+.dsq-tab{box-sizing:border-box;flex:none;height:24px;padding:0 8px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--dsw-alias-label-secondary,#667085);font-family:inherit;font-size:11.5px;line-height:22px;cursor:pointer;white-space:nowrap;transition:background-color .12s ease,color .12s ease,border-color .12s ease}
+.dsq-tab:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1));color:var(--dsw-alias-label-primary,#1f2328)}
+.dsq-tab-on{background:color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 10%,transparent);border-color:color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 26%,transparent);color:var(--dsw-alias-label-primary,#1f2328);font-weight:600}
+.dsq-tab:focus-visible{outline:none;border-color:var(--dsw-alias-border-selected,var(--dsw-alias-brand-primary,#4d6bfe))}
+.dsq-count{flex:0 1 auto;min-width:0;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;line-height:16px;color:var(--dsw-alias-label-caption,#98a2b3);font-variant-numeric:tabular-nums}
+.dsq-mini{box-sizing:border-box;flex:none;height:24px;min-width:24px;padding:0 7px;border:0;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary,#667085);font-family:inherit;font-size:12px;line-height:1;cursor:pointer}
 .dsq-mini:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#1f2328)}
 .dsq-mini:disabled{opacity:.45;cursor:default}
-.dsq-count{flex:none;min-width:30px;text-align:center;font-size:10px;color:var(--dsw-alias-label-secondary,#667085)}
-.dsq-pagename{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:var(--dsw-alias-label-primary,#1f2328)}
-.dsq-flash{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;font-size:10px}
+
+/* 编辑态 */
 .dsq-row{display:flex;align-items:center;gap:6px}
 .dsq-row-label{flex:none;font-size:11px;color:var(--dsw-alias-label-secondary,#667085)}
-.dsq-input,.dsq-textarea{box-sizing:border-box;width:100%;padding:5px 8px;border:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.12));border-radius:8px;background:transparent;color:var(--dsw-alias-label-primary,#1f2328);font-family:inherit;font-size:12px;line-height:18px;outline:none}
-.dsq-textarea{resize:vertical;min-height:84px;white-space:pre-wrap}
-.dsq-input:focus,.dsq-textarea:focus{border-color:var(--dsw-alias-brand-primary,#4d6bfe)}
+.dsq-input,.dsq-textarea{box-sizing:border-box;width:100%;padding:6px 9px;border:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.1));border-radius:var(--dsw-radius-sm,8px);background:var(--dsw-alias-bg-module-platform,rgba(127,127,127,.06));color:inherit;font-family:inherit;font-size:12px;line-height:18px;outline:none;transition:border-color .12s ease,background-color .12s ease}
+.dsq-textarea{resize:vertical;min-height:96px;white-space:pre-wrap}
+.dsq-input:focus,.dsq-textarea:focus{border-color:var(--dsw-alias-border-selected,var(--dsw-alias-brand-primary,#4d6bfe));background:var(--dsw-alias-bg-layer-2,#fff)}
 .dsq-actions{display:flex;align-items:center;gap:6px}
-.dsq-action{box-sizing:border-box;height:26px;padding:0 10px;border:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.12));border-radius:8px;background:transparent;color:var(--dsw-alias-label-primary,#1f2328);font-size:12px;line-height:18px;cursor:pointer}
-.dsq-action:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}
+.dsq-action{box-sizing:border-box;height:28px;padding:0 12px;border:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.1));border-radius:var(--dsw-radius-sm,8px);background:transparent;color:inherit;font-family:inherit;font-size:12px;line-height:18px;cursor:pointer}
+.dsq-action:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1))}
 .dsq-action-primary{border-color:transparent;background:var(--dsw-alias-brand-primary,#4d6bfe);color:#fff}
-.dsq-action-primary:hover{background:var(--dsw-alias-brand-primary,#4d6bfe);opacity:.9}
+.dsq-action-primary:hover{background:var(--dsw-alias-brand-primary,#4d6bfe);opacity:.92}
 .dsq-ok{color:var(--dsw-alias-state-success-primary,#12b76a)}
 .dsq-err{color:var(--dsw-alias-state-error-primary,#d92d20)}
 .dsq-muted{color:var(--dsw-alias-label-secondary,#667085)}
+
+/* 拖拽：只有标题栏是把手，输入框和按钮不拖 */
+.dsq-head{cursor:grab;user-select:none}
+.dsq-head:active{cursor:grabbing}
+.dsq-head input,.dsq-head button{cursor:auto}
+
+/* 悬停预览：固定位置 + 不接收指针，鼠标可以径直移向下一张卡 */
+.dsq-preview{position:fixed;z-index:61;box-sizing:border-box;padding:10px 12px;border-radius:var(--dsw-radius-md,12px);background:var(--dsw-alias-bg-layer-2,#fff);border:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.08));box-shadow:var(--dsw-elevation-panel,0 12px 32px rgba(16,24,40,.14));color:var(--dsw-alias-label-primary,#1f2328);font-size:12px;line-height:18px;pointer-events:none;overflow:hidden;animation:dsq-fade .12s ease-out}
+@keyframes dsq-fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.dsq-preview{animation:none}}
+.dsq-preview-title{font-weight:600;margin-bottom:2px}
+.dsq-preview-meta{font-size:10px;line-height:14px;color:var(--dsw-alias-label-caption,#98a2b3);margin-bottom:6px}
+.dsq-preview-text{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--dsw-alias-label-secondary,#667085);max-height:168px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 74%,transparent);mask-image:linear-gradient(#000 74%,transparent)}
+.dsq-preview-foot{margin-top:7px;font-size:10px;line-height:14px;color:var(--dsw-alias-label-caption,#98a2b3)}
 `
 
     // ------------------------------------------------------------ 小工具
@@ -283,30 +326,15 @@ window.__ModuleLoader__.load({
       }))
     }
 
-    // ------------------------------------------------------------ 常驻开关的记忆
+    // ------------------------------------------------------------ 开合状态
 
-    const OPEN_KEY = 'quick-input.open'
-
-    /** 记住面板是开着还是关着：开着就刷新页面后依然常驻在输入框左边。 */
-    function readOpenFlag() {
-      try {
-        return window.localStorage !== undefined && window.localStorage !== null && window.localStorage.getItem(OPEN_KEY) === '1'
-      } catch {
-        return false
-      }
-    }
-
-    function writeOpenFlag(value) {
-      try {
-        if (window.localStorage) window.localStorage.setItem(OPEN_KEY, value ? '1' : '0')
-      } catch {
-        /* 存不了就算了，不影响界面 */
-      }
-    }
-
-    /** 本会话的面板开着吗：没手动开过关过，就跟着上次的常驻开关走。 */
+    /**
+     * 气泡只在本次会话里记住开合：刷新页面/重开应用一律收起。
+     * （旧版是「常驻面板」，会把这个状态写进 localStorage；气泡形态不这么做——
+     *   刷新后自动弹出一个浮层是打扰，而不是恢复。）
+     */
     function isOpen(sessionId) {
-      return store.open.has(sessionId) ? store.open.get(sessionId) === true : readOpenFlag()
+      return store.open.get(sessionId) === true
     }
 
     // ------------------------------------------------------------ 模块级共享状态
@@ -343,6 +371,79 @@ window.__ModuleLoader__.load({
     }
 
     const flashTimers = new Map()
+
+    // ------------------------------------------------------------ 跨槽位桥
+
+    /**
+     * ⊞ 挂在 `conversation.input.left`（会话作用域），拿得到 sessionId / inputActions；
+     * 气泡挂在 `shell.overlay`（root 作用域），这些 props 都拿不到。
+     * 两个半区同属一个包、同一个客户端模块，所以用这份模块级桥接传递。
+     */
+    const bridge = {
+      sessionId: null,
+      inputActions: null,
+      phase: undefined,
+      /** ⊞ 按钮节点：气泡靠它定位。 */
+      node: null,
+    }
+
+    /** 每个会话各自的搜索态：`{ query, active }`。切会话不串台。 */
+    const searchState = new Map()
+
+    function readSearch(sessionId) {
+      return searchState.get(sessionId) ?? { query: '', active: 0 }
+    }
+
+    function writeSearch(sessionId, patch) {
+      searchState.set(sessionId, { ...readSearch(sessionId), ...patch })
+    }
+
+    /** 一页页摊平成可搜索的条目。 */
+    function flattenPages(pages) {
+      const items = []
+      pages.forEach((page, pageIndex) => {
+        page.cells.forEach((cell, cellIndex) => {
+          if (!cell) return
+          items.push({ pageIndex, cellIndex, page: page.title, label: cell.label, text: cell.text })
+        })
+      })
+      return items
+    }
+
+    /** 搜索：label 命中排在正文命中前面，同档按页序、格序。 */
+    function searchPages(pages, query) {
+      const q = String(query || '').trim().toLowerCase()
+      if (q === '') return null
+      const hits = []
+      for (const item of flattenPages(pages)) {
+        const inLabel = item.label.toLowerCase().indexOf(q) !== -1
+        const inText = item.text.toLowerCase().indexOf(q) !== -1
+        if (!inLabel && !inText) continue
+        hits.push({ item, rank: inLabel ? 0 : 1 })
+      }
+      hits.sort(
+        (a, b) =>
+          a.rank - b.rank ||
+          a.item.pageIndex - b.item.pageIndex ||
+          a.item.cellIndex - b.item.cellIndex,
+      )
+      return hits.map((hit) => hit.item)
+    }
+
+    /** 一行摘要：压平空白后截断。 */
+    function snippet(text) {
+      const flat = String(text || '').replace(/\s+/g, ' ').trim()
+      return flat.length > 64 ? `${flat.slice(0, 63)}…` : flat
+    }
+
+    /** 收起面板（两个半区共用）。 */
+    function closePanel(sessionId) {
+      store.open.set(sessionId, false)
+      store.editing.set(sessionId, null)
+      store.editMode.set(sessionId, false)
+      store.flash.delete(sessionId)
+      store.emit()
+    }
 
     /** 在面板底部闪一条结果，2.4 秒后自动消失。 */
     function setFlash(sessionId, kind, text) {
@@ -441,63 +542,79 @@ window.__ModuleLoader__.load({
       return state && typeof state.phase === 'string' ? state.phase : undefined
     }
 
-    // ------------------------------------------------------------ 位置自测
+    // ------------------------------------------------------------ 位置记忆
 
-    /**
-     * 找「输入框卡片」这个盒子：面板往上走，第一个高度不是 0 的祖先就是它
-     * （中间的槽位容器和锚点都是零高度）。只用来量高度；读不到就当量不到。
-     */
-    function findCardElement(node) {
-      try {
-        let current = node && node.parentElement ? node.parentElement : null
-        for (let depth = 0; current && depth < 6; depth++) {
-          const rect = typeof current.getBoundingClientRect === 'function' ? current.getBoundingClientRect() : null
-          if (rect && rect.height > 20) return current
-          current = current.parentElement
-        }
-      } catch {
-        /* 读不到就当没有 */
-      }
-      return null
+    /** 拖拽位移（相对锚点）按窗口宽度分档存，换分辨率不会飘到屏幕外。 */
+    const POS_KEY = 'quick-input.pos.v1'
+
+    function widthBucket() {
+      const width = window.innerWidth || 1280
+      return width < 900 ? 's' : width < 1400 ? 'm' : 'l'
     }
 
-    /**
-     * 找「会话列」这个盒子：卡片往上走，第一个明显比卡片宽的祖先就是它。
-     * 用它算出输入框左边还剩多少空隙——面板宽度按这个空隙自适应。
-     */
-    function findColumnRect(cardNode) {
+    function loadPos() {
       try {
-        if (!cardNode || typeof cardNode.getBoundingClientRect !== 'function') return null
-        const cardRect = cardNode.getBoundingClientRect()
-        let current = cardNode.parentElement
-        for (let depth = 0; current && depth < 5; depth++) {
-          const rect = typeof current.getBoundingClientRect === 'function' ? current.getBoundingClientRect() : null
-          if (rect && rect.width > cardRect.width + 24) return rect
-          current = current.parentElement
-        }
+        const raw = window.localStorage ? window.localStorage.getItem(POS_KEY) : null
+        if (!raw) return null
+        const all = JSON.parse(raw) || {}
+        const value = all[widthBucket()]
+        if (!value || typeof value.dx !== 'number' || typeof value.dy !== 'number') return null
+        return { dx: value.dx, dy: value.dy }
       } catch {
-        /* 读不到就当量不到 */
+        return null
       }
-      return null
     }
 
-    /**
-     * 侧挂是否可行：量自己的框，再用 elementFromPoint 探自己身上的一点。
-     * 探到的不是自己（被裁掉、或被左侧栏盖住）就退回「输入框上方浮层」。
-     */
-    function canSideDock(node) {
-      if (!node || typeof node.getBoundingClientRect !== 'function') return false
+    function savePos(value) {
       try {
-        const rect = node.getBoundingClientRect()
-        if (!rect || rect.width <= 0 || rect.height <= 0) return false
-        if (rect.left < 8 || rect.right > window.innerWidth + 1) return false
-        const doc = window.document
-        if (!doc || typeof doc.elementFromPoint !== 'function') return false
-        const probe = doc.elementFromPoint(Math.round(rect.left) + 6, Math.round(rect.top) + 6)
-        return probe !== null && probe !== undefined && typeof node.contains === 'function' && node.contains(probe)
+        if (!window.localStorage) return
+        const raw = window.localStorage.getItem(POS_KEY)
+        const all = raw ? JSON.parse(raw) || {} : {}
+        if (value === null) delete all[widthBucket()]
+        else all[widthBucket()] = { dx: Math.round(value.dx), dy: Math.round(value.dy) }
+        window.localStorage.setItem(POS_KEY, JSON.stringify(all))
       } catch {
-        return false
+        /* 存不了就算了 */
       }
+    }
+
+    // ------------------------------------------------------------ 气泡定位
+
+    /**
+     * 气泡位置：默认贴在 ⊞ 右边；右边放不下翻到左边；上下取空间大的一侧。
+     * 用 fixed 定位——气泡在 shell.overlay 这一层，不受 composer 卡片裁剪。
+     * 拖动过就叠加位移（dy 为正＝向下），并钳在视口内。
+     */
+    function popoverStyle(anchor, drag) {
+      const vw = window.innerWidth || 1280
+      const vh = window.innerHeight || 800
+      const width = Math.max(300, Math.min(PANEL_WIDTH, vw - VIEWPORT_MARGIN * 2))
+      let left = anchor.right + PANEL_GAP
+      if (left + width > vw - VIEWPORT_MARGIN) left = anchor.left - PANEL_GAP - width
+      left = Math.max(VIEWPORT_MARGIN, Math.min(left, vw - width - VIEWPORT_MARGIN))
+      const above = anchor.top - VIEWPORT_MARGIN
+      const below = vh - anchor.bottom - VIEWPORT_MARGIN
+      const putAbove = above >= 240 || above >= below
+      const space = Math.max(200, putAbove ? above : below)
+      const style = { left: left, width: width, maxHeight: Math.min(PANEL_MAX_HEIGHT, space) }
+      if (putAbove) style.bottom = Math.max(VIEWPORT_MARGIN, vh - anchor.top)
+      else style.top = Math.max(VIEWPORT_MARGIN, anchor.bottom)
+
+      if (drag) {
+        const dx = Number(drag.dx) || 0
+        const dy = Number(drag.dy) || 0
+        style.left = Math.max(
+          VIEWPORT_MARGIN - 40,
+          Math.min(Number(style.left) + dx, vw - width - VIEWPORT_MARGIN + 40),
+        )
+        if (putAbove) {
+          // bottom 越大越靠上，所以向下拖是减。
+          style.bottom = Math.max(160, Math.min(Number(style.bottom) - dy, vh - VIEWPORT_MARGIN))
+        } else {
+          style.top = Math.max(VIEWPORT_MARGIN, Math.min(Number(style.top) + dy, vh - 160))
+        }
+      }
+      return style
     }
 
     // ------------------------------------------------------------ hook 小工具
@@ -547,6 +664,18 @@ window.__ModuleLoader__.load({
       const t = translator(props)
       const sessionId = props.sessionId
       const open = isOpen(sessionId)
+      const btnRef = React.useRef(null)
+      // 只在槽位真的给了 useInput 时才订阅输入状态；拿不到当未知。
+      const phase = typeof props.useInput === 'function' ? props.useInput(selectPhase) : undefined
+
+      // 每次渲染都把最新的会话能力递给浮层（气泡在另一个作用域里）。
+      React.useEffect(() => {
+        bridge.sessionId = sessionId ?? null
+        bridge.inputActions = props.inputActions ?? null
+        bridge.phase = phase
+        bridge.node = btnRef.current ?? bridge.node
+      })
+
       return h(
         React.Fragment,
         null,
@@ -554,6 +683,7 @@ window.__ModuleLoader__.load({
         h(
           'button',
           {
+            ref: btnRef,
             type: 'button',
             className: open ? 'dsq-btn dsq-btn-on' : 'dsq-btn',
             style: { WebkitAppearance: 'none' },
@@ -563,8 +693,12 @@ window.__ModuleLoader__.load({
             onMouseDown: keepFocus,
             onClick: () => {
               const next = open !== true
+              // 先递能力再开面板：浮层的第一次渲染就能拿到 sessionId。
+              bridge.sessionId = sessionId ?? null
+              bridge.inputActions = props.inputActions ?? null
+              bridge.phase = phase
+              bridge.node = btnRef.current ?? bridge.node
               store.open.set(sessionId, next)
-              writeOpenFlag(next)
               if (next) ensureDoc(false)
               store.emit()
             },
@@ -749,197 +883,232 @@ window.__ModuleLoader__.load({
     function QuickPanel(props) {
       useStore()
       const t = translator(props)
-      const sessionId = props.sessionId
-      const open = isOpen(sessionId)
+      const sessionId = bridge.sessionId
+      const open = sessionId !== null && sessionId !== undefined && isOpen(sessionId)
+      const [anchor, setAnchor] = React.useState(null)
+      const [drag, setDrag] = React.useState(() => loadPos())
+      const [preview, setPreview] = React.useState(null)
+      const timers = React.useRef({ show: 0, hide: 0, last: 0 })
       const rootRef = React.useRef(null)
-      const [dock, setDock] = React.useState(SIDE_BY_SIDE ? 'side' : 'above')
-      const [panelWidth, setPanelWidth] = React.useState(PANEL_MAX_WIDTH)
-      const [cardHeight, setCardHeight] = React.useState(0)
-      const [room, setRoom] = React.useState(420)
-      // 槽位标准 prop；拿不到就当未知（undefined），按老路照常尝试插入。
-      const phase = typeof props.useInput === 'function' ? props.useInput(selectPhase) : undefined
 
+      // 关掉面板就把预览和计时器一起清掉。
       React.useEffect(() => {
-        if (open) ensureDoc(false)
+        if (open) return
+        setPreview(null)
+        const current = timers.current
+        if (current.show) clearTimeout(current.show)
+        if (current.hide) clearTimeout(current.hide)
+        current.show = 0
+        current.hide = 0
       }, [open])
 
-      /**
-       * 常驻形态下要自己量三件事（都只量自己和自己的宿主容器）：
-       *   1. 侧挂（贴输入框左边）有没有被裁掉——量自己的框 + 探一个点；被裁就换窄一级再试，
-       *      都放不下才退回「输入框上方浮层」；
-       *   2. 输入框卡片有多高——面板要和它等高（往上找到第一个非零高度的祖先就是卡片）；
-       *   3. 编辑态临时长高时上方还剩多少高度——超过可用空间的部分会被祖先的 overflow 裁掉。
-       * 窗口尺寸变了、卡片随草稿长高了，都要重量一次。
-       */
+      // 打开时量锚点；窗口变了、或者草稿长高把 ⊞ 顶走了，跟着重量。
       React.useEffect(() => {
-        if (!open) return
-        /** @param allowSideRetry 窗口变化时允许从浮层状态重新试一次侧挂。 */
-        const measure = (allowSideRetry) => {
-          const node = rootRef.current
-          // 自己还没挂上时什么都不动：探不到位置不等于「被裁」，别急着降级。
+        if (!open) return undefined
+        const measure = () => {
+          const node = bridge.node
           if (!node || typeof node.getBoundingClientRect !== 'function') return
-          let card = 0
-          let free = null
-          let space = 420
-          try {
-            const cardNode = findCardElement(node)
-            const cardRect =
-              cardNode && typeof cardNode.getBoundingClientRect === 'function' ? cardNode.getBoundingClientRect() : null
-            if (cardRect && Number.isFinite(cardRect.height) && cardRect.height > 20) {
-              card = Math.round(cardRect.height)
+          const rect = node.getBoundingClientRect()
+          if (!rect || rect.width <= 0) return
+          setAnchor((previous) => {
+            if (
+              previous &&
+              previous.left === rect.left &&
+              previous.top === rect.top &&
+              previous.right === rect.right &&
+              previous.bottom === rect.bottom
+            ) {
+              return previous
             }
-            const columnRect = findColumnRect(cardNode)
-            if (cardRect && columnRect && Number.isFinite(cardRect.left) && Number.isFinite(columnRect.left)) {
-              free = Math.round(cardRect.left - columnRect.left)
-            }
-            const rect = node.getBoundingClientRect()
-            // 侧挂时 rect.bottom 就是卡片下沿（视口坐标）；上方浮层时它是面板自己的下沿。
-            if (rect && Number.isFinite(rect.bottom)) {
-              space =
-                dock === 'above'
-                  ? Math.max(180, Math.min(460, Math.round(rect.bottom - 72)))
-                  : Math.max(220, Math.min(460, Math.round(rect.bottom - 150)))
-            }
-          } catch {
-            /* 量不到就用兜底值 */
-          }
-
-          // 1) 位置：左侧空隙连最窄的面板都放不下，就别试了。
-          const enough = free === null || free - PANEL_GAP >= PANEL_MIN_WIDTH
-          if (SIDE_BY_SIDE) {
-            if (dock === 'above') {
-              if (allowSideRetry === true && enough) {
-                setDock('side')
-                return
-              }
-            } else if (!enough) {
-              setDock('above')
-              return
-            }
-          }
-
-          // 2) 宽度：贴着可用空隙走（浮层形态不受左侧限制，用最宽）。
-          const wanted =
-            dock === 'above' || free === null
-              ? PANEL_MAX_WIDTH
-              : Math.max(PANEL_MIN_WIDTH, Math.min(PANEL_MAX_WIDTH, free - PANEL_GAP))
-          if (wanted !== panelWidth) {
-            // 先把宽度落到 DOM 上，下一轮再判位置——否则探的是旧宽度。
-            setPanelWidth(wanted)
-            return
-          }
-
-          // 3) 位置复核：宽度已经是最新的，真探一下自己还在不在。
-          const probeOk = dock === 'above' ? null : canSideDock(node)
-          if (SIDE_BY_SIDE && dock !== 'above' && probeOk !== true) {
-            setDock('above')
-            return
-          }
-
-          setCardHeight((previous) => (previous === card ? previous : card))
-          setRoom((previous) => (previous === space ? previous : space))
-          reportLayout({
-            dock,
-            width: panelWidth,
-            card,
-            free,
-            probe: probeOk,
-            innerWidth: window.innerWidth,
-            locale: activeLocaleId,
+            return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom }
           })
         }
-        measure(false)
+        measure()
         const disposers = []
         if (typeof window.addEventListener === 'function') {
-          const onResize = () => measure(true)
-          window.addEventListener('resize', onResize)
-          disposers.push(() => window.removeEventListener('resize', onResize))
+          window.addEventListener('resize', measure)
+          disposers.push(() => window.removeEventListener('resize', measure))
         }
-        // 草稿变长时卡片会长高，面板要跟着等高。
-        const cardNode = findCardElement(rootRef.current)
-        const Observer = window.ResizeObserver
-        if (cardNode && typeof Observer === 'function') {
-          try {
-            const observer = new Observer(() => measure(false))
-            observer.observe(cardNode)
-            disposers.push(() => observer.disconnect())
-          } catch {
-            /* 观察不了就只靠 resize */
-          }
-        }
+        // ⊞ 会被宿主布局改动（侧栏开合、草稿长高）挪走，低频跟一下就够了。
+        const timer = setInterval(measure, 500)
+        disposers.push(() => clearInterval(timer))
         return () => {
           for (const dispose of disposers) {
             try {
               dispose()
             } catch {
-              /* 忽略 */
+              /* 清理失败不影响界面 */
             }
           }
         }
-      }, [open, store.doc.status, dock, panelWidth])
+      }, [open])
+
+      // 点面板外关闭：面板外 + ⊞ 外才算外（和 DSH 菜单的判定一致）。
+      React.useEffect(() => {
+        if (!open) return undefined
+        const onDown = (event) => {
+          const root = rootRef.current
+          const target = event.target
+          if (root && typeof root.contains === 'function' && root.contains(target)) return
+          if (bridge.node && typeof bridge.node.contains === 'function' && bridge.node.contains(target)) return
+          closePanel(sessionId)
+        }
+        document.addEventListener('mousedown', onDown, true)
+        return () => document.removeEventListener('mousedown', onDown, true)
+      }, [open, sessionId])
+
+      // Esc：只在焦点真的落在面板里时接管，绝不抢输入框的 Esc。
+      React.useEffect(() => {
+        if (!open) return undefined
+        const onKey = (event) => {
+          if (event.key !== 'Escape') return
+          const root = rootRef.current
+          if (!root || !root.contains(document.activeElement)) return
+          event.preventDefault()
+          event.stopPropagation()
+          closePanel(sessionId)
+        }
+        document.addEventListener('keydown', onKey, true)
+        return () => document.removeEventListener('keydown', onKey, true)
+      }, [open, sessionId])
 
       if (!open) return null
+      if (anchor === null) return null
 
       const pages = store.doc.pages
-      const pageIndex = pages.length === 0 ? 0 : Math.min(Math.max(store.page.get(sessionId) ?? 0, 0), pages.length - 1)
+      const pageIndex =
+        pages.length === 0 ? 0 : Math.min(Math.max(store.page.get(sessionId) ?? 0, 0), pages.length - 1)
       const page = pages[pageIndex]
       const editing = store.editing.get(sessionId) ?? null
       const editMode = store.editMode.get(sessionId) === true
       const flash = store.flash.get(sessionId) ?? null
-      /** 编辑/改格子时要输入框和按钮，网格形态放不下，所以那两种形态临时长高并改为向上生长。 */
-      const roomy = editMode === true || editing !== null
-      const measured = cardHeight > 0 ? cardHeight : DEFAULT_CARD_HEIGHT
-      const panelHeight = Math.max(measured, MIN_PANEL_HEIGHT)
-      // 卡片比最小高度还矮时（空草稿就是），上下各外扩一半，视觉上仍然和输入框齐平。
-      const overhang = Math.max(0, panelHeight - measured)
+      const search = readSearch(sessionId)
+      const results = searchPages(pages, search.query) ?? []
+      const active = Math.min(Math.max(search.active, 0), Math.max(results.length - 1, 0))
 
-      const position =
-        dock === 'side'
-          ? roomy
-            ? { right: '100%', bottom: 0, marginRight: PANEL_GAP, width: panelWidth, maxHeight: room }
-            : {
-                right: '100%',
-                top: -overhang,
-                marginRight: PANEL_GAP,
-                width: panelWidth,
-                height: panelHeight,
-              }
-          : { left: 0, bottom: 0, marginBottom: PANEL_GAP, width: panelWidth, maxHeight: room }
-
-      const selectPage = (index) => {
-        store.page.set(sessionId, index)
-        store.editing.set(sessionId, null)
-        store.emit()
+      const insert = (cell) => {
+        stopPreview()
+        const result = insertIntoDraft(bridge.inputActions, cell.text, bridge.phase)
+        if (result.ok === true) setFlash(sessionId, 'ok', t('inserted', { text: toLabel('', cell.text) }))
+        else setFlash(sessionId, 'err', result.reason)
       }
 
-      const openEditor = (cell) => {
-        store.page.set(sessionId, pageIndex)
-        store.editing.set(sessionId, { page: pageIndex, cell })
-        store.emit()
-      }
-
-      const close = () => {
-        store.open.set(sessionId, false)
-        store.editing.set(sessionId, null)
-        store.editMode.set(sessionId, false)
-        store.flash.delete(sessionId)
-        writeOpenFlag(false)
-        const timer = flashTimers.get(sessionId)
-        if (timer !== undefined) {
-          clearTimeout(timer)
-          flashTimers.delete(sessionId)
+      // —— 悬停预览 ——
+      // 450ms 首次、120ms 相邻切换、180ms 离开宽限；预览不接收指针，所以绝不挡鼠标。
+      const hoverCapable = (() => {
+        try {
+          return typeof window.matchMedia === 'function' ? window.matchMedia('(hover: hover)').matches : true
+        } catch {
+          return true
         }
+      })()
+
+      const stopPreview = () => {
+        const current = timers.current
+        if (current.show) {
+          clearTimeout(current.show)
+          current.show = 0
+        }
+        if (current.hide) {
+          clearTimeout(current.hide)
+          current.hide = 0
+        }
+      }
+
+      const hoverEnter = (event, cell) => {
+        if (!hoverCapable) return
+        const node = event && event.currentTarget ? event.currentTarget : null
+        if (!node || typeof node.getBoundingClientRect !== 'function') return
+        const rect = node.getBoundingClientRect()
+        const root = rootRef.current
+        const rootRect = root && root.getBoundingClientRect ? root.getBoundingClientRect() : rect
+        const current = timers.current
+        if (current.hide) {
+          clearTimeout(current.hide)
+          current.hide = 0
+        }
+        if (current.show) clearTimeout(current.show)
+        const delay = Date.now() - (current.last || 0) < 600 ? 120 : 450
+        current.show = setTimeout(() => {
+          current.show = 0
+          current.last = Date.now()
+          setPreview({
+            label: cell.label,
+            text: cell.text,
+            page: cell.page,
+            top: rect.top,
+            left: rootRect.left,
+            right: rootRect.right,
+          })
+        }, delay)
+      }
+
+      const hoverLeave = () => {
+        const current = timers.current
+        if (current.show) {
+          clearTimeout(current.show)
+          current.show = 0
+        }
+        if (current.hide) clearTimeout(current.hide)
+        current.hide = setTimeout(() => {
+          current.hide = 0
+          setPreview(null)
+        }, 180)
+      }
+
+      // —— 拖拽（只有标题栏是把手） ——
+      const onHeadPointerDown = (event) => {
+        if (!event || event.button !== 0) return
+        const target = event.target
+        if (target && typeof target.closest === 'function' && target.closest('input,button,textarea')) return
+        const startX = event.clientX
+        const startY = event.clientY
+        const base = drag || { dx: 0, dy: 0 }
+        let latest = base
+        let moved = false
+        const onMove = (moveEvent) => {
+          const dx = moveEvent.clientX - startX
+          const dy = moveEvent.clientY - startY
+          if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return
+          moved = true
+          latest = { dx: base.dx + dx, dy: base.dy + dy }
+          setDrag(latest)
+        }
+        const onUp = () => {
+          document.removeEventListener('pointermove', onMove)
+          document.removeEventListener('pointerup', onUp)
+          if (moved) savePos(latest)
+        }
+        try {
+          if (event.currentTarget && typeof event.currentTarget.setPointerCapture === 'function') {
+            event.currentTarget.setPointerCapture(event.pointerId)
+          }
+        } catch {
+          /* 捕获失败也能拖 */
+        }
+        document.addEventListener('pointermove', onMove)
+        document.addEventListener('pointerup', onUp)
+      }
+
+      const resetPosition = () => {
+        savePos(null)
+        setDrag(null)
+        setPreview(null)
+      }
+
+      const openEditor = (index) => {
+        store.page.set(sessionId, pageIndex)
+        store.editing.set(sessionId, { page: pageIndex, cell: index })
         store.emit()
       }
 
       const addPage = async () => {
         if (pages.length >= MAX_PAGES) return
-        const created = {
+        const next = clonePages()
+        next.push({
           title: t('pageNumber', { index: pages.length + 1 }),
           cells: new Array(CELLS_PER_PAGE).fill(null),
-        }
-        const next = clonePages()
-        next.push(created)
+        })
         try {
           await commit(next)
           store.page.set(sessionId, next.length - 1)
@@ -951,109 +1120,204 @@ window.__ModuleLoader__.load({
         }
       }
 
-      const insertCell = (cell) => {
-        const result = insertIntoDraft(props.inputActions, cell.text, phase)
-        if (result.ok) setFlash(sessionId, 'ok', t('inserted', { text: toLabel('', cell.text) }))
-        else setFlash(sessionId, 'err', result.reason)
+      /** 网格内的方向键：在卡片之间移动焦点（3 列）。 */
+      const onGridKey = (event) => {
+        const key = event.key
+        if (key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'ArrowUp' && key !== 'ArrowDown') return
+        const buttons = Array.from(event.currentTarget.querySelectorAll('button'))
+        const current = buttons.indexOf(document.activeElement)
+        if (current < 0) return
+        const delta = key === 'ArrowRight' ? 1 : key === 'ArrowLeft' ? -1 : key === 'ArrowDown' ? 3 : -3
+        const next = current + delta
+        if (next < 0 || next >= buttons.length) return
+        event.preventDefault()
+        buttons[next].focus()
       }
 
-      /**
-       * 底部一条 15px 的控制栏：翻页 + 编辑 + 关闭，以及一闪而过的结果提示。
-       * 常驻形态和输入框等高，高度很紧，所以不放标题、不放提示文案。
-       */
-      const bar = h(
+      const head = h(
         'div',
-        { className: 'dsq-bar' },
-        pages.length > 1
-          ? h(
-              'button',
-              {
-                type: 'button',
-                className: 'dsq-mini',
-                title: t('prevPage'),
-                onMouseDown: keepFocus,
-                onClick: () => selectPage((pageIndex - 1 + pages.length) % pages.length),
-              },
-              '‹',
-            )
-          : null,
-        h('span', { className: 'dsq-count', title: page ? page.title : '' }, `${pageIndex + 1}/${Math.max(pages.length, 1)}`),
-        pages.length > 1
-          ? h(
-              'button',
-              {
-                type: 'button',
-                className: 'dsq-mini',
-                title: t('nextPage'),
-                onMouseDown: keepFocus,
-                onClick: () => selectPage((pageIndex + 1) % pages.length),
-              },
-              '›',
-            )
-          : null,
-        editMode && pages.length < MAX_PAGES
-          ? h(
-              'button',
-              { type: 'button', className: 'dsq-mini', title: t('addPage'), onMouseDown: keepFocus, onClick: addPage },
-              t('addPageShort'),
-            )
-          : null,
-        flash
-          ? h('span', { className: `dsq-flash ${flash.kind === 'ok' ? 'dsq-ok' : 'dsq-err'}`, title: flash.text }, flash.text)
-          : store.doc.status === 'error'
-            ? h(
-                'button',
-                {
-                  type: 'button',
-                  className: 'dsq-mini dsq-err',
-                  title: t('readFailed', { message: store.doc.error }),
-                  onMouseDown: keepFocus,
-                  onClick: () => ensureDoc(true),
-                },
-                t('retryRead'),
-              )
-            : h(
-                'span',
-                {
-                  className: 'dsq-pagename',
-                  // 页名常驻在这里；翻页、改名都跟着变，长了就省略号 + 悬停看全名。
-                  title: page
-                    ? t('pageHint', { title: page.title, index: pageIndex + 1, total: Math.max(pages.length, 1) })
-                    : '',
-                },
-                page ? page.title : '',
-              ),
+        { className: 'dsq-head', onPointerDown: onHeadPointerDown, onDoubleClick: resetPosition },
+        h(
+          'div',
+          { className: 'dsq-searchwrap' },
+          h(
+            'svg',
+            {
+              className: 'dsq-searchicon',
+              width: 14,
+              height: 14,
+              viewBox: '0 0 24 24',
+              fill: 'none',
+              stroke: 'currentColor',
+              strokeWidth: 2.2,
+              'aria-hidden': 'true',
+            },
+            h('circle', { cx: 11, cy: 11, r: 7 }),
+            h('path', { d: 'M20 20l-3.5-3.5' }),
+          ),
+          h('input', {
+          className: 'dsq-search',
+          type: 'search',
+          value: search.query,
+          placeholder: t('searchPlaceholder'),
+          'aria-label': t('searchPlaceholder'),
+          onChange: (event) => {
+            setPreview(null)
+            writeSearch(sessionId, { query: event.target.value, active: 0 })
+            store.emit()
+          },
+          onKeyDown: (event) => {
+            if (event.key === 'ArrowDown') {
+              event.preventDefault()
+              writeSearch(sessionId, { active: Math.min(active + 1, Math.max(results.length - 1, 0)) })
+              store.emit()
+            } else if (event.key === 'ArrowUp') {
+              event.preventDefault()
+              writeSearch(sessionId, { active: Math.max(active - 1, 0) })
+              store.emit()
+            } else if (event.key === 'Enter') {
+              event.preventDefault()
+              const hit = results[active]
+              if (hit) insert(hit)
+            } else if (event.key === 'Escape') {
+              event.preventDefault()
+              if (search.query !== '') {
+                writeSearch(sessionId, { query: '', active: 0 })
+                store.emit()
+              } else {
+                closePanel(sessionId)
+              }
+            }
+          },
+        }),
+        ),
         h(
           'button',
           {
             type: 'button',
-            className: 'dsq-mini',
-            title: editMode ? t('finishEdit') : t('editPresets'),
+            className: 'dsq-x',
+            title: t('collapse'),
+            'aria-label': t('collapse'),
             onMouseDown: keepFocus,
-            onClick: () => {
-              if (pages.length === 0) return
-              store.editing.set(sessionId, null)
-              store.editMode.set(sessionId, editMode !== true)
-              store.emit()
-            },
+            onClick: () => closePanel(sessionId),
           },
-          editMode ? t('done') : '✎',
+          '×',
         ),
-        h(
-          'button',
-          { type: 'button', className: 'dsq-mini', title: t('collapse'), onMouseDown: keepFocus, onClick: close },
-          '✕',
+      )
+
+      const tabs = h(
+        'div',
+        { className: 'dsq-tabs', role: 'tablist' },
+        pages.map((item, index) =>
+          h(
+            'button',
+            {
+              key: `tab-${index}`,
+              type: 'button',
+              role: 'tab',
+              'aria-selected': index === pageIndex ? 'true' : 'false',
+              className: index === pageIndex ? 'dsq-tab dsq-tab-on' : 'dsq-tab',
+              title: t('pageHint', { title: item.title, index: index + 1, total: Math.max(pages.length, 1) }),
+              onMouseDown: keepFocus,
+              onClick: () => {
+                store.page.set(sessionId, index)
+                store.editing.set(sessionId, null)
+                store.emit()
+              },
+            },
+            item.title,
+          ),
         ),
+      )
+
+      const grid =
+        page === undefined
+          ? null
+          : h(
+              'div',
+              { className: 'dsq-grid3', role: 'group', 'aria-label': t('panelAria'), onKeyDown: onGridKey },
+              page.cells.map((cell, index) => {
+                if (!cell) {
+                  return editMode
+                    ? h(
+                        'button',
+                        {
+                          key: `c-${index}`,
+                          type: 'button',
+                          className: 'dsq-card dsq-card-empty',
+                          title: t('emptyCell'),
+                          onMouseDown: keepFocus,
+                          onClick: () => openEditor(index),
+                        },
+                        '＋',
+                      )
+                    : null
+                }
+                return h(
+                  'button',
+                  {
+                    key: `c-${index}`,
+                    type: 'button',
+                    className: 'dsq-card',
+                    title: cell.text,
+                    onMouseDown: keepFocus,
+                    onMouseEnter: (event) =>
+                      hoverEnter(event, {
+                        label: cell.label,
+                        text: cell.text,
+                        page: page ? page.title : '',
+                      }),
+                    onMouseLeave: hoverLeave,
+                    onClick: () => (editMode ? openEditor(index) : insert(cell)),
+                    onContextMenu: (event) => {
+                      if (event && typeof event.preventDefault === 'function') event.preventDefault()
+                      openEditor(index)
+                    },
+                  },
+                  h('span', { className: 'dsq-card-label' }, cell.label),
+                  editMode ? h('span', { className: 'dsq-card-sub' }, t('editCellShort')) : null,
+                )
+              }),
+            )
+
+      const list = h(
+        'div',
+        { className: 'dsq-results', role: 'listbox', 'aria-label': t('searchPlaceholder') },
+        results.length === 0
+          ? h('div', { className: 'dsq-muted', style: { padding: '10px 8px' } }, t('noResults', { q: search.query }))
+          : results.map((item, index) =>
+              h(
+                'button',
+                {
+                  key: `r-${item.pageIndex}-${item.cellIndex}`,
+                  type: 'button',
+                  role: 'option',
+                  'aria-selected': index === active ? 'true' : 'false',
+                  className: index === active ? 'dsq-item dsq-item-on' : 'dsq-item',
+                  title: item.text,
+                  onMouseDown: keepFocus,
+                  onClick: () => insert(item),
+                  onMouseEnter: () => {
+                    if (index === active) return
+                    writeSearch(sessionId, { active: index })
+                    store.emit()
+                  },
+                },
+                h('span', { className: 'dsq-item-label' }, item.label),
+                h('span', { className: 'dsq-item-snippet' }, snippet(item.text)),
+                h('span', { className: 'dsq-item-page' }, item.page),
+              ),
+            ),
       )
 
       let body = null
       if (store.doc.status === 'loading' && pages.length === 0) {
-        body = h('div', { className: 'dsq-muted' }, t('loading'))
+        body = h('div', { className: 'dsq-muted', style: { padding: '12px 8px' } }, t('loading'))
       } else if (store.doc.status === 'error' && pages.length === 0) {
         body = h(
           'div',
-          { style: { display: 'flex', flexDirection: 'column', gap: 6 } },
-          h('div', { className: 'dsq-err', style: { textAlign: 'left' } }, t('readFailed', { message: store.doc.error })),
+          { style: { display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 4px' } },
+          h('div', { className: 'dsq-err' }, t('readFailed', { message: store.doc.error })),
           h(
             'button',
             { type: 'button', className: 'dsq-action', onMouseDown: keepFocus, onClick: () => ensureDoc(true) },
@@ -1073,43 +1337,82 @@ window.__ModuleLoader__.load({
             t,
           }),
         )
-      } else if (page) {
-        body = h(
+      } else if (search.query !== '') {
+        body = list
+      } else {
+        body = grid
+      }
+
+      // 页签放在最后一行：气泡底部锚定，换页时这一行不会上下移动。
+      const tabsRow = h(
+        'div',
+        { className: 'dsq-tabsrow' },
+        tabs,
+        h(
+          'span',
+          {
+            className: 'dsq-count',
+            title: flash
+              ? flash.text
+              : t('pageHint', {
+                  title: page ? page.title : '',
+                  index: pageIndex + 1,
+                  total: Math.max(pages.length, 1),
+                }),
+          },
+          flash
+            ? h('span', { className: flash.kind === 'ok' ? 'dsq-ok' : 'dsq-err' }, flash.text)
+            : `${pageIndex + 1}/${Math.max(pages.length, 1)}`,
+        ),
+        editMode && pages.length < MAX_PAGES
+          ? h(
+              'button',
+              {
+                type: 'button',
+                className: 'dsq-mini',
+                title: t('addPage'),
+                onMouseDown: keepFocus,
+                onClick: addPage,
+              },
+              '＋',
+            )
+          : null,
+        h(
+          'button',
+          {
+            type: 'button',
+            className: 'dsq-mini',
+            title: editMode ? t('finishEdit') : t('editPresets'),
+            onMouseDown: keepFocus,
+            onClick: () => {
+              if (pages.length === 0) return
+              store.editing.set(sessionId, null)
+              store.editMode.set(sessionId, editMode !== true)
+              store.emit()
+            },
+          },
+          editMode ? t('done') : '✎',
+        ),
+      )
+
+      let previewNode = null
+      if (preview !== null) {
+        const vw = window.innerWidth || 1280
+        const vh = window.innerHeight || 800
+        const width = 300
+        const gap = 10
+        let left = preview.right + gap
+        if (left + width > vw - VIEWPORT_MARGIN) left = preview.left - gap - width
+        left = Math.max(VIEWPORT_MARGIN, Math.min(left, vw - width - VIEWPORT_MARGIN))
+        const top = Math.max(VIEWPORT_MARGIN, Math.min(preview.top, vh - 240))
+        const raw = String(preview.text || '')
+        previewNode = h(
           'div',
-          { className: 'dsq-grid' },
-          page.cells.map((cell, index) =>
-            cell
-              ? h(
-                  'button',
-                  {
-                    key: `cell-${index}`,
-                    type: 'button',
-                    className: 'dsq-cell',
-                    title: editMode ? t('editCell', { text: cell.text }) : cell.text,
-                    onMouseDown: keepFocus,
-                    // 编辑态：左键改成「改这一格」；平时：左键 = 插到输入框。
-                    onClick: () => (editMode ? openEditor(index) : insertCell(cell)),
-                    onContextMenu: (event) => {
-                      if (event && typeof event.preventDefault === 'function') event.preventDefault()
-                      openEditor(index)
-                    },
-                  },
-                  h('span', { className: 'dsq-cell-label' }, cell.label),
-                  editMode ? h('span', { className: 'dsq-cell-mark' }, '✎') : null,
-                )
-              : h(
-                  'button',
-                  {
-                    key: `cell-${index}`,
-                    type: 'button',
-                    className: 'dsq-cell dsq-cell-empty',
-                    title: t('emptyCell'),
-                    onMouseDown: keepFocus,
-                    onClick: () => openEditor(index),
-                  },
-                  '＋',
-                ),
-          ),
+          { className: 'dsq-preview', style: { left: left, top: top, width: width }, 'aria-hidden': 'true' },
+          h('div', { className: 'dsq-preview-title' }, preview.label),
+          h('div', { className: 'dsq-preview-meta' }, t('previewMeta', { page: preview.page, n: raw.length })),
+          h('div', { className: 'dsq-preview-text' }, raw.length > 360 ? `${raw.slice(0, 360)}…` : raw),
+          h('div', { className: 'dsq-preview-foot' }, t('previewHint')),
         )
       }
 
@@ -1121,14 +1424,17 @@ window.__ModuleLoader__.load({
           'div',
           {
             ref: rootRef,
-            className: 'dsq-panel',
-            style: position,
-            role: 'group',
+            className: 'dsq-pop',
+            style: popoverStyle(anchor, drag),
+            role: 'dialog',
+            'aria-modal': 'false',
             'aria-label': t('panelAria'),
           },
-          h('div', { className: roomy ? 'dsq-body dsq-body-scroll' : 'dsq-body' }, body),
-          bar,
+          head,
+          h('div', { className: editing !== null ? 'dsq-body dsq-body-auto' : 'dsq-body' }, body),
+          tabsRow,
         ),
+        previewNode,
       )
     }
 
@@ -1227,6 +1533,55 @@ window.__ModuleLoader__.load({
         ctx.slots.inject(PANEL_SLOT, () =>
           ctx.slots.register({ name: PANEL_SLOT, id: 'quick-input-panel', order: 20, locale: NS }, GuardedPanel),
         )
+        // 全局快捷键（可选服务）：Ctrl/Cmd+Shift+K 开合面板。
+        // 用 ctx.inject 而不是 inject 数组，profile 里没有 shortcuts 时插件照常工作。
+        try {
+          if (typeof ctx.inject === 'function') {
+            ctx.inject(['shortcuts'], (scoped) => {
+              scoped.effect(() => {
+                const shortcuts = scoped.shortcuts
+                if (!shortcuts || typeof shortcuts.register !== 'function') return () => {}
+                try {
+                  return shortcuts.register({
+                  id: 'quick-input.toggle',
+                  label: () => tr('shortcutToggle'),
+                  aliases: ['quick input', 'quick phrases', 'prompt pad', '快捷输入'],
+                  defaults: {
+                    'desktop:macos': { code: 'KeyK', modifiers: ['primary', 'shift'] },
+                    'desktop:windows': { code: 'KeyK', modifiers: ['primary', 'shift'] },
+                    'desktop:linux': { code: 'KeyK', modifiers: ['primary', 'shift'] },
+                    'web:macos': { code: 'KeyK', modifiers: ['primary', 'alt'] },
+                    'web:windows': { code: 'KeyK', modifiers: ['primary', 'alt'] },
+                    'web:linux': { code: 'KeyK', modifiers: ['primary', 'alt'] },
+                  },
+                  regions: ['page', 'editable'],
+                  modals: [],
+                  resolve: ({ modal }) => {
+                    if (modal !== null && modal !== undefined) return { status: 'pass' }
+                    const session = bridge.sessionId
+                    if (session === null || session === undefined) return { status: 'pass' }
+                    return {
+                      status: 'handled',
+                      run: () => {
+                        const next = !isOpen(session)
+                        store.open.set(session, next)
+                        if (next) ensureDoc(false)
+                        store.emit()
+                      },
+                    }
+                  },
+                  })
+                } catch (error) {
+                  // 键位与别的命令冲突时 register 会抛错；快捷键没了不影响面板本身。
+                  console.warn('[quick-input] 快捷键注册失败：', error)
+                  return () => {}
+                }
+              }, 'quick-input: shortcut')
+            })
+          }
+        } catch {
+          /* 没有快捷键服务就跳过，不影响面板 */
+        }
         announceBuild()
       },
     }
