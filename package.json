@@ -18,14 +18,21 @@
     "deepseek-harness",
     "dsh",
     "dsh-plugin",
+    "dsh-client",
     "client-plugin",
+    "prompt",
+    "prompts",
+    "prompt-library",
+    "prompt-manager",
+    "snippets",
     "quick-input",
     "quick-phrases",
+    "quick-reply",
+    "phrase-library",
     "presets",
+    "templates",
     "composer",
-    "snippets",
-    "i18n",
-    "bilingual"
+    "i18n"
   ],
   "engines": {
     "node": ">=20"

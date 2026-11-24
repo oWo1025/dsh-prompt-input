@@ -79,6 +79,26 @@ icon: https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/icon-256.p
 | 单条描述不夸大、不写营销话术 | ✅ 只写功能与 fork 关系 |
 | 一个 PR 最多 3 条 | ✅ 我们只提 1 条 |
 
+### 搜索曝光（写在描述里，不是堆关键词）
+
+市场的检索规则（`dsh-plugin-market` 文档）：文本匹配**包名、作者、标题、描述、分类标题**；
+按非字母数字切词，中日韩文本切成**相邻两字组**；查询里的**每个词都要命中**（AND），
+支持前缀匹配，四字以上才允许轻微编辑距离。名称/标题权重 ×3。
+
+索引条目里**没有 keywords 字段**，所以曝光只能靠：**描述措辞、条目名、分类**。当前覆盖的词：
+
+| 语言 | 覆盖 |
+|---|---|
+| 中文 | 快捷输入、预设、短语、话术、模板、提示词、常用指令、收藏、最近使用、搜索、插入、光标、快捷键、撤销、草稿 |
+| 英文 | prompt, prompts, prompt manager, prompt library, quick input, quick phrases, snippets, templates, presets, composer, insert at caret, undoable, hotkey, fork |
+
+维护时注意三点：
+
+1. **中文要写完整的词**——切成两字组后，「快捷输入」产生 快捷/捷输/输入，查「输入」也能中；
+   但如果只写「快捷」，查「快捷输入」就缺 捷输、输入 两个组，不会命中。
+2. **别删英文同义词**：`snippets` / `templates` / `quick phrases` 都有人在查。
+3. **描述必须还是人话**：堆词会被审核打回，也影响点击率。上面两段是自然句子，不是关键词表。
+
 ### 截图：放在**我们自己仓库**的 `screenshots.json`
 
 不是写进 YAML。在 package.json 旁边放一个 `screenshots.json`，内容是相对路径数组（1–8 张），
