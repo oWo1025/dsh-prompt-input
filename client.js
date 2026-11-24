@@ -29,7 +29,7 @@ window.__ModuleLoader__.load({
     const API = '/quick-input'
 
     /** 客户端构建号：页面加载时回报给宿主，`GET /quick-input/health` 里能看到跑的是哪一份。 */
-    const CLIENT_BUILD = '0.2.2+build1'
+    const CLIENT_BUILD = '0.2.3+build1'
 
     /** 文案命名空间：注册槽位时带上它，槽位就会把 `t` 交给组件。 */
     const NS = 'quick-input'
@@ -91,6 +91,12 @@ window.__ModuleLoader__.load({
         previewMeta: '{page} · {n} 字',
         previewHint: '点击插入 · 拖动标题栏可移动位置',
         shortcutToggle: '打开 / 收起快捷输入',
+        dragHint: '拖动这里移动面板（双击复位）',
+        saveAsNew: '另存为新格',
+        pageFull: '这一页满了（9 格），先腾一个格子',
+        moveHint: '拖到别的格子或页签上可换位置（仅编辑态）',
+        movedCell: '已移动',
+        moveFailed: '这次移动会丢内容，已取消',
       },
       en: {
         toggleShow: 'Show quick input (docked left of the composer)',
@@ -143,6 +149,12 @@ window.__ModuleLoader__.load({
         previewMeta: '{page} · {n} chars',
         previewHint: 'Click to insert · drag the header to move',
         shortcutToggle: 'Toggle quick input',
+        dragHint: 'Drag here to move the panel (double-click to reset)',
+        saveAsNew: 'Save as new cell',
+        pageFull: 'This page is full (9 cells)',
+        moveHint: 'Drag onto another card or a tab to move it (edit mode)',
+        movedCell: 'Moved',
+        moveFailed: 'That move would lose a cell — cancelled',
       },
     }
 
@@ -255,10 +267,13 @@ window.__ModuleLoader__.load({
 .dsq-err{color:var(--dsw-alias-state-error-primary,#d92d20)}
 .dsq-muted{color:var(--dsw-alias-label-secondary,#667085)}
 
-/* 拖拽：只有标题栏是把手，输入框和按钮不拖 */
-.dsq-head{cursor:grab;user-select:none}
-.dsq-head:active{cursor:grabbing}
-.dsq-head input,.dsq-head button{cursor:auto}
+/* 拖拽：标题行被搜索框占满，所以左上角单独给一个六点把手 */
+.dsq-grip{flex:none;width:16px;height:30px;display:grid;place-items:center;color:var(--dsw-alias-label-caption,#98a2b3);cursor:grab;border-radius:var(--dsw-radius-sm,8px);user-select:none;transition:background-color .12s ease,color .12s ease}
+.dsq-grip:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1));color:var(--dsw-alias-label-secondary,#667085)}
+.dsq-grip:active{cursor:grabbing}
+.dsq-card-drag{opacity:.45}
+.dsq-card-over{border-color:var(--dsw-alias-brand-primary,#4d6bfe);border-style:dashed}
+.dsq-tab-over{background:color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 18%,transparent);color:var(--dsw-alias-label-primary,#1f2328)}
 
 /* 悬停预览：固定位置 + 不接收指针，鼠标可以径直移向下一张卡 */
 .dsq-preview{position:fixed;z-index:61;box-sizing:border-box;padding:10px 12px;border-radius:var(--dsw-radius-md,12px);background:var(--dsw-alias-bg-layer-2,#fff);border:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.08));box-shadow:var(--dsw-elevation-panel,0 12px 32px rgba(16,24,40,.14));color:var(--dsw-alias-label-primary,#1f2328);font-size:12px;line-height:18px;pointer-events:none;overflow:hidden;animation:dsq-fade .12s ease-out}
@@ -749,6 +764,35 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const saveAsNew = async (value) => {
+        if (busy) return
+        setBusy(true)
+        setError('')
+        const pages = clonePages()
+        const target = pages[props.page]
+        if (!target) {
+          setError(t('pageGone'))
+          setBusy(false)
+          return
+        }
+        const slot = target.cells.indexOf(null)
+        if (slot < 0) {
+          setError(t('pageFull'))
+          setBusy(false)
+          return
+        }
+        target.cells[slot] = value
+        try {
+          await commit(pages)
+          setFlash(sessionId, 'ok', t('saved'))
+          close()
+        } catch (failure) {
+          setError(messageOf(failure))
+        } finally {
+          setBusy(false)
+        }
+      }
+
       return h(
         'div',
         { className: 'dsq-actions', style: { flexDirection: 'column', alignItems: 'stretch', gap: 6 } },
@@ -795,6 +839,23 @@ window.__ModuleLoader__.load({
                 t('clearCell'),
               )
             : null,
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'dsq-action',
+              disabled: busy,
+              title: t('saveAsNew'),
+              onClick: () => {
+                if (text.trim() === '') {
+                  setError(t('textRequired'))
+                  return
+                }
+                saveAsNew({ label: label.trim() === '' ? toLabel('', text) : label.trim(), text })
+              },
+            },
+            t('saveAsNew'),
+          ),
           h('button', { type: 'button', className: 'dsq-action', disabled: busy, onClick: close }, t('back')),
         ),
       )
@@ -888,6 +949,7 @@ window.__ModuleLoader__.load({
       const [anchor, setAnchor] = React.useState(null)
       const [drag, setDrag] = React.useState(() => loadPos())
       const [preview, setPreview] = React.useState(null)
+      const [cellDrag, setCellDrag] = React.useState(null)
       const timers = React.useRef({ show: 0, hide: 0, last: 0 })
       const rootRef = React.useRef(null)
 
@@ -1096,6 +1158,97 @@ window.__ModuleLoader__.load({
         setPreview(null)
       }
 
+      // —— 编辑态：把格子拖到别的格子（同页重排）或页签（换页） ——
+      const dropTargetAt = (x, y) => {
+        try {
+          const node = document.elementFromPoint(x, y)
+          if (!node || typeof node.closest !== 'function') return null
+          const cellNode = node.closest('[data-cell]')
+          if (cellNode) return { kind: 'cell', index: Number(cellNode.getAttribute('data-cell')) }
+          const pageNode = node.closest('[data-page]')
+          if (pageNode) return { kind: 'page', index: Number(pageNode.getAttribute('data-page')) }
+          return null
+        } catch {
+          return null
+        }
+      }
+
+      const beginCellDrag = (event, index) => {
+        if (!editMode || !event || event.button !== 0) return
+        const startX = event.clientX
+        const startY = event.clientY
+        let active = false
+        let over = null
+        const onMove = (moveEvent) => {
+          const dx = moveEvent.clientX - startX
+          const dy = moveEvent.clientY - startY
+          if (!active && Math.abs(dx) + Math.abs(dy) < 6) return
+          active = true
+          over = dropTargetAt(moveEvent.clientX, moveEvent.clientY)
+          setCellDrag({ from: index, over })
+          setPreview(null)
+        }
+        const onUp = () => {
+          document.removeEventListener('pointermove', onMove)
+          document.removeEventListener('pointerup', onUp)
+          setCellDrag(null)
+          if (active && over) applyMove(index, over)
+        }
+        document.addEventListener('pointermove', onMove)
+        document.addEventListener('pointerup', onUp)
+      }
+
+      const applyMove = async (fromIndex, target) => {
+        const pagesNext = clonePages()
+        const source = pagesNext[pageIndex]
+        if (!source) return
+        const cell = source.cells[fromIndex]
+        if (!cell) return
+        const destinationIndex = target.kind === 'page' ? target.index : pageIndex
+        const destination = pagesNext[destinationIndex]
+        if (!destination) return
+
+        if (destinationIndex === pageIndex) {
+          if (target.kind === 'cell' && target.index === fromIndex) return
+          const list = source.cells.slice()
+          list.splice(fromIndex, 1)
+          list.push(null)
+          list.splice(target.kind === 'cell' ? target.index : list.length - 1, 0, cell)
+          list.length = CELLS_PER_PAGE
+          source.cells = list
+        } else {
+          // 跨页只追加到第一个空格子，避免覆盖目标页的已有内容
+          const slot = destination.cells.indexOf(null)
+          if (slot < 0) {
+            setFlash(sessionId, 'err', t('pageFull'))
+            return
+          }
+          const from = source.cells.slice()
+          from[fromIndex] = null
+          source.cells = from
+          const to = destination.cells.slice()
+          to[slot] = cell
+          to.length = CELLS_PER_PAGE
+          destination.cells = to
+        }
+
+        // 防御：移动不该改变格子总数。数量对不上就中止，绝不静默丢内容。
+        const countCells = (list) => list.reduce((sum, item) => sum + (item ? 1 : 0), 0)
+        const before = pages.reduce((sum, item) => sum + countCells(item.cells), 0)
+        const after = pagesNext.reduce((sum, item) => sum + countCells(item.cells), 0)
+        if (before !== after) {
+          setFlash(sessionId, 'err', t('moveFailed'))
+          return
+        }
+
+        try {
+          await commit(pagesNext)
+          setFlash(sessionId, 'ok', t('movedCell'))
+        } catch (failure) {
+          setFlash(sessionId, 'err', messageOf(failure))
+        }
+      }
+
       const openEditor = (index) => {
         store.page.set(sessionId, pageIndex)
         store.editing.set(sessionId, { page: pageIndex, cell: index })
@@ -1136,7 +1289,26 @@ window.__ModuleLoader__.load({
 
       const head = h(
         'div',
-        { className: 'dsq-head', onPointerDown: onHeadPointerDown, onDoubleClick: resetPosition },
+        { className: 'dsq-head' },
+        h(
+          'div',
+          {
+            className: 'dsq-grip',
+            title: t('dragHint'),
+            'aria-hidden': 'true',
+            onPointerDown: onHeadPointerDown,
+            onDoubleClick: resetPosition,
+          },
+          h(
+            'svg',
+            { width: 10, height: 14, viewBox: '0 0 10 14', fill: 'currentColor', 'aria-hidden': 'true' },
+            [0, 1, 2].map((row) =>
+              [0, 1].map((column) =>
+                h('circle', { key: `${row}-${column}`, cx: 2 + column * 5, cy: 2 + row * 5, r: 1.5 }),
+              ),
+            ),
+          ),
+        ),
         h(
           'div',
           { className: 'dsq-searchwrap' },
@@ -1216,7 +1388,12 @@ window.__ModuleLoader__.load({
               type: 'button',
               role: 'tab',
               'aria-selected': index === pageIndex ? 'true' : 'false',
-              className: index === pageIndex ? 'dsq-tab dsq-tab-on' : 'dsq-tab',
+              'data-page': index,
+              className:
+                (index === pageIndex ? 'dsq-tab dsq-tab-on' : 'dsq-tab') +
+                (cellDrag && cellDrag.over && cellDrag.over.kind === 'page' && cellDrag.over.index === index
+                  ? ' dsq-tab-over'
+                  : ''),
               title: t('pageHint', { title: item.title, index: index + 1, total: Math.max(pages.length, 1) }),
               onMouseDown: keepFocus,
               onClick: () => {
@@ -1244,7 +1421,12 @@ window.__ModuleLoader__.load({
                         {
                           key: `c-${index}`,
                           type: 'button',
-                          className: 'dsq-card dsq-card-empty',
+                          'data-cell': index,
+                          className:
+                            'dsq-card dsq-card-empty' +
+                            (cellDrag && cellDrag.over && cellDrag.over.kind === 'cell' && cellDrag.over.index === index
+                              ? ' dsq-card-over'
+                              : ''),
                           title: t('emptyCell'),
                           onMouseDown: keepFocus,
                           onClick: () => openEditor(index),
@@ -1258,9 +1440,16 @@ window.__ModuleLoader__.load({
                   {
                     key: `c-${index}`,
                     type: 'button',
-                    className: 'dsq-card',
+                    'data-cell': index,
+                    className:
+                      'dsq-card' +
+                      (cellDrag && cellDrag.from === index ? ' dsq-card-drag' : '') +
+                      (cellDrag && cellDrag.over && cellDrag.over.kind === 'cell' && cellDrag.over.index === index
+                        ? ' dsq-card-over'
+                        : ''),
                     title: cell.text,
                     onMouseDown: keepFocus,
+                    onPointerDown: (event) => beginCellDrag(event, index),
                     onMouseEnter: (event) =>
                       hoverEnter(event, {
                         label: cell.label,
