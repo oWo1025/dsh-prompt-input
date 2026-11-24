@@ -29,7 +29,7 @@ window.__ModuleLoader__.load({
     const API = '/quick-input'
 
     /** 客户端构建号：页面加载时回报给宿主，`GET /quick-input/health` 里能看到跑的是哪一份。 */
-    const CLIENT_BUILD = '0.2.3+build1'
+    const CLIENT_BUILD = '0.2.4+build1'
 
     /** 文案命名空间：注册槽位时带上它，槽位就会把 `t` 交给组件。 */
     const NS = 'quick-input'
@@ -96,6 +96,8 @@ window.__ModuleLoader__.load({
         pageFull: '这一页满了（9 格），先腾一个格子',
         moveHint: '拖到别的格子或页签上可换位置（仅编辑态）',
         movedCell: '已移动',
+        recentTab: '最近',
+        recentHint: '最近点过的 prompt（自动保留 8 条，不可编辑）',
         moveFailed: '这次移动会丢内容，已取消',
       },
       en: {
@@ -154,6 +156,8 @@ window.__ModuleLoader__.load({
         pageFull: 'This page is full (9 cells)',
         moveHint: 'Drag onto another card or a tab to move it (edit mode)',
         movedCell: 'Moved',
+        recentTab: 'Recent',
+        recentHint: 'Recently inserted prompts (last 8, read-only)',
         moveFailed: 'That move would lose a cell — cancelled',
       },
     }
@@ -366,6 +370,8 @@ window.__ModuleLoader__.load({
       /** 正在编辑哪一格：`{ page, cell }`，null 表示没在编辑器里。 */
       editing: new Map(),
       flash: new Map(),
+      /** 是否停在虚拟的「最近」页。 */
+      recentView: new Map(),
       doc: { status: 'idle', pages: [], error: '' },
       listeners: new Set(),
       emit() {
@@ -411,6 +417,38 @@ window.__ModuleLoader__.load({
 
     function writeSearch(sessionId, patch) {
       searchState.set(sessionId, { ...readSearch(sessionId), ...patch })
+    }
+
+    // ------------------------------------------------------------ 最近使用
+
+    /** 点过的 prompt 置顶，最多 8 条，按正文去重（同一条不会重复占位）。 */
+    const RECENT_KEY = 'quick-input.recent.v1'
+    const RECENT_MAX = 8
+
+    function readRecent() {
+      try {
+        const raw = window.localStorage ? window.localStorage.getItem(RECENT_KEY) : null
+        if (!raw) return []
+        const list = JSON.parse(raw)
+        if (!Array.isArray(list)) return []
+        return list
+          .filter((item) => item && typeof item.text === 'string' && typeof item.label === 'string')
+          .slice(0, RECENT_MAX)
+      } catch {
+        return []
+      }
+    }
+
+    function pushRecent(item) {
+      if (!item || typeof item.text !== 'string' || item.text === '') return
+      try {
+        if (!window.localStorage) return
+        const list = readRecent().filter((entry) => entry.text !== item.text)
+        list.unshift({ label: item.label || '', text: item.text, page: item.page || '' })
+        window.localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_MAX)))
+      } catch {
+        /* 存不了就算了，不影响插入 */
+      }
     }
 
     /** 一页页摊平成可搜索的条目。 */
@@ -1043,6 +1081,8 @@ window.__ModuleLoader__.load({
       const page = pages[pageIndex]
       const editing = store.editing.get(sessionId) ?? null
       const editMode = store.editMode.get(sessionId) === true
+      const recent = readRecent()
+      const showRecent = store.recentView.get(sessionId) === true && recent.length > 0
       const flash = store.flash.get(sessionId) ?? null
       const search = readSearch(sessionId)
       const results = searchPages(pages, search.query) ?? []
@@ -1051,8 +1091,12 @@ window.__ModuleLoader__.load({
       const insert = (cell) => {
         stopPreview()
         const result = insertIntoDraft(bridge.inputActions, cell.text, bridge.phase)
-        if (result.ok === true) setFlash(sessionId, 'ok', t('inserted', { text: toLabel('', cell.text) }))
-        else setFlash(sessionId, 'err', result.reason)
+        if (result.ok === true) {
+          pushRecent({ label: cell.label, text: cell.text, page: cell.page })
+          setFlash(sessionId, 'ok', t('inserted', { text: toLabel('', cell.text) }))
+        } else {
+          setFlash(sessionId, 'err', result.reason)
+        }
       }
 
       // —— 悬停预览 ——
@@ -1174,7 +1218,7 @@ window.__ModuleLoader__.load({
       }
 
       const beginCellDrag = (event, index) => {
-        if (!editMode || !event || event.button !== 0) return
+        if (!editMode || showRecent || !event || event.button !== 0) return
         const startX = event.clientX
         const startY = event.clientY
         let active = false
@@ -1380,6 +1424,27 @@ window.__ModuleLoader__.load({
       const tabs = h(
         'div',
         { className: 'dsq-tabs', role: 'tablist' },
+        recent.length > 0
+          ? h(
+              'button',
+              {
+                key: 'tab-recent',
+                type: 'button',
+                role: 'tab',
+                'aria-selected': showRecent ? 'true' : 'false',
+                className: showRecent ? 'dsq-tab dsq-tab-on' : 'dsq-tab',
+                title: t('recentHint'),
+                onMouseDown: keepFocus,
+                onClick: () => {
+                  store.recentView.set(sessionId, true)
+                  store.editMode.set(sessionId, false)
+                  store.editing.set(sessionId, null)
+                  store.emit()
+                },
+              },
+              t('recentTab'),
+            )
+          : null,
         pages.map((item, index) =>
           h(
             'button',
@@ -1387,16 +1452,17 @@ window.__ModuleLoader__.load({
               key: `tab-${index}`,
               type: 'button',
               role: 'tab',
-              'aria-selected': index === pageIndex ? 'true' : 'false',
+              'aria-selected': !showRecent && index === pageIndex ? 'true' : 'false',
               'data-page': index,
               className:
-                (index === pageIndex ? 'dsq-tab dsq-tab-on' : 'dsq-tab') +
+                (!showRecent && index === pageIndex ? 'dsq-tab dsq-tab-on' : 'dsq-tab') +
                 (cellDrag && cellDrag.over && cellDrag.over.kind === 'page' && cellDrag.over.index === index
                   ? ' dsq-tab-over'
                   : ''),
               title: t('pageHint', { title: item.title, index: index + 1, total: Math.max(pages.length, 1) }),
               onMouseDown: keepFocus,
               onClick: () => {
+                store.recentView.set(sessionId, false)
                 store.page.set(sessionId, index)
                 store.editing.set(sessionId, null)
                 store.emit()
@@ -1457,7 +1523,10 @@ window.__ModuleLoader__.load({
                         page: page ? page.title : '',
                       }),
                     onMouseLeave: hoverLeave,
-                    onClick: () => (editMode ? openEditor(index) : insert(cell)),
+                    onClick: () =>
+                      editMode
+                        ? openEditor(index)
+                        : insert({ label: cell.label, text: cell.text, page: page ? page.title : '' }),
                     onContextMenu: (event) => {
                       if (event && typeof event.preventDefault === 'function') event.preventDefault()
                       openEditor(index)
@@ -1467,6 +1536,31 @@ window.__ModuleLoader__.load({
                   editMode ? h('span', { className: 'dsq-card-sub' }, t('editCellShort')) : null,
                 )
               }),
+            )
+
+      const recentGrid =
+        recent.length === 0
+          ? null
+          : h(
+              'div',
+              { className: 'dsq-grid3', role: 'group', 'aria-label': t('recentTab') },
+              recent.map((item, index) =>
+                h(
+                  'button',
+                  {
+                    key: `recent-${index}-${item.text.length}`,
+                    type: 'button',
+                    className: 'dsq-card',
+                    title: item.text,
+                    onMouseDown: keepFocus,
+                    onMouseEnter: (event) => hoverEnter(event, item),
+                    onMouseLeave: hoverLeave,
+                    onClick: () => insert(item),
+                  },
+                  h('span', { className: 'dsq-card-label' }, item.label || toLabel('', item.text)),
+                  h('span', { className: 'dsq-card-sub' }, item.page || ''),
+                ),
+              ),
             )
 
       const list = h(
@@ -1528,6 +1622,8 @@ window.__ModuleLoader__.load({
         )
       } else if (search.query !== '') {
         body = list
+      } else if (showRecent) {
+        body = recentGrid
       } else {
         body = grid
       }

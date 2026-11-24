@@ -1,203 +1,201 @@
-# 应声 · 快捷输入（DSH 插件）
+# 应声 · 快捷输入
 
-> **这是本地修改版（0.2.0），不是上游原版。**
-> 基于上游 `dsh-quick-input@0.1.0`（MIT，© 2026 cm860712ch-cloud，
-> <https://github.com/cm860712ch-cloud/dsh-quick-input>）修改，改动见 [CHANGELOG.md](CHANGELOG.md)。
-> 本文件下面关于"常驻在输入框左边、与输入框等高"的描述属于 **0.1.0**；0.2.0 已改成
-> **点 ⊞ 在它右侧弹出气泡**（可搜索）。其余章节（预设位置、编辑方式、卸载）仍然适用。
+> 输入框旁边的一格一格 prompt。点一下就插到光标处。
 
-输入框工具行最左边的 ⊞：点一下，在它右侧弹出气泡，**搜索框 + 3 列卡片**。
-点一张卡片，预设好的文字就**插到草稿的光标处**。
+DSH（DeepSeek Harness）的 Web 输入框插件：把常用的 prompt、话术、指令沉淀成**可见的卡片**，
+点 ⊞ 打开气泡、点一张卡、文字落进草稿的光标处——不打断输入，不切窗口，不用再翻笔记。
 
-```
-   ┌───────────────┐  ┌──────────────────────────┐
-   │ 继续  │先给结论│  │  输入你的消息…            │
-   │ 说短点│ 列步骤 │  │                          │
-   │ 说人话│表格对比│  │                          │
-   │‹1/2› ✎ ✕     │  │ [⊞][模型]       [发送]   │
-   └───────────────┘  └──────────────────────────┘
-     常驻在输入框左边，与它等高
-```
-
-- **常驻**：点一次 ⊞ 就开着（记在浏览器里，刷新页面、换会话都还在），再点 ⊞ 或 ✕ 收起。
-- **等高**：面板高度跟着输入框卡片走（草稿变长卡片长高，面板一起长）。
-- **九宫格**：每页 3×3，最多 12 页；格子里的文字 11px、最多两行。
-- **插入语义**：插在光标处（可撤销的一次编辑），不是覆盖草稿。连点几格就依次接在后面。
-- **控制栏**（面板底部那一条）：`‹ 1/2 ›` 翻页、中间显示**当前页名（tab 名称）**、`✎` 进编辑、
-  `✕` 收起；插入结果之类的提示会临时顶替页名，2.4 秒后自动换回来。
-- **中英切换**：界面文案跟随 DSH 的**语言设置**（设置 → 通用 → 语言），中文显示中文、English 显示英文。
-  首次生成的示例短语也按当时的界面语言给（中文用户拿到「常用 / 代码」，英文用户拿到「Common / Code」）；
-  你自己改过的内容不会被翻译。
-- 改预设：点 `✎` → 点某一格 → 改名称和内容 → 保存。空格子点一下就是新建；右键任意格子也能直接改。
+![界面](docs/panel.png)
 
 ---
 
-## 安装（只有这一步要动手）
+## 一、它解决什么问题
 
-**从插件市场装**（发布后）：DSH 左侧边栏 → **插件** → 添加插件 → 填 `dsh-quick-input`。
+写 prompt 的人通常会有三个困境，这个插件就是冲这三个去的：
 
-**从本地装**（开发/未发布时）：
+1. **记不住**。几十条沉淀下来的 prompt，真正要用的时候想不起来叫什么、放在哪个文件里。
+2. **复制烦**。每次都要切到笔记、找到那段、复制、切回来、粘贴——一次二十秒，一天几十次。
+3. **改不动**。想调整一句措辞、把两条换个顺序，得回去改文件（还可能改错 JSON）。
 
-1. DSH 左侧边栏 → **插件** → **添加插件**
-2. 粘贴这个**绝对路径**（整个文件夹，不是文件名）：
+插件把这三件事变成：**点开 → 点中 → 插入**，以及**在界面里直接改**。
 
-   ```
-   C:\Users\mac\Downloads\应声插件
-   ```
+## 二、设计目标
 
-3. **安装** → **立即启用** → 回到对话页 **刷新一下页面**
+### 做的
 
-装好后输入框工具行最左边会出现 ⊞。
-
-> 也可以让 Agent 装：对它说「用 `plugin_manager` 的 `install_bundle`，把
-> `C:\Users\mac\Downloads\应声插件` 装到当前 profile」。
-
-仓库：<https://github.com/cm860712ch-cloud/dsh-quick-input>　·　包名：`dsh-quick-input`
-
----
-
-## 怎么用
-
-| 操作 | 结果 |
+| 目标 | 具体落实 |
 |---|---|
-| 点 ⊞ | 展开/收起（常驻在输入框左边） |
-| 点某一格 | 该格文字插到草稿光标处，面板不关（可以连点） |
-| `‹` `›` | 翻页；中间是当前页名，页名左边是 `当前页/总页数` |
-| 点 `✎` | 进入编辑态：每格右侧出现 ✎，左键从「插入」变成「改这一格」；再点「完成」退出 |
-| 编辑态点某一格 | 打开该格编辑器：改名称、内容，保存 / 清空此格 / 返回 |
-| 右键格子 | 不进编辑态也能直接改那一格 |
-| 点 `✕` | 收起面板（⊞ 也会跟着灭） |
+| 一击即用 | 三步内完成插入；不弹确认、不跳页面 |
+| 不打断输入 | 焦点始终留在输入框，插入是一次**可撤销**的光标处编辑，不覆盖草稿 |
+| 找得到 | 搜索（标签 + 正文）+「最近」页（最近点过的 8 条置顶） |
+| 自己能改 | 界面上改文字、改页名、拖动排序、跨页移动、另存为新格 |
+| 像原生的 | 跟随 DSH 主题 token（含深浅色）、中英双语、快捷键进 DSH 快捷键表 |
 
----
+### 不做的
 
-## 预设放在哪
+- 不做云同步、不做 prompt 市场、不做分享
+- 不做富文本/Markdown 编辑器——它就是纯文本片段
+- **不接管输入框的键盘**：Esc、方向键、数字键仍属于输入框，只有焦点在面板里时才会被面板处理
+- 不做多选批量插入（一次点一条，要连点就连点）
+
+## 三、装法
+
+DSH 左侧栏 → **插件** → **添加插件** → 填入这个目录的绝对路径 → 安装 → 启用 → **刷新页面**。
 
 ```
-C:\Users\mac\.dsh\quick-input\presets.json
+E:\dsh\quick-input-dev      ← 本仓库就是这个目录
 ```
 
-- 第一次使用会写入内置的两页示例（常用 / 代码）作为种子。
-- 之后界面里改的所有内容都落在这个文件里，刷新页面、换浏览器都不丢。
-- 想恢复出厂：删掉这个文件，再刷新页面即可（会重新播种）。
-- 格式：`{ "version": 1, "pages": [ { "title": "常用", "cells": [ { "label": "继续", "text": "继续" }, null, ... ] } ] }`，每页固定 9 格，空格子是 `null`。
+装好后输入框工具行最左边出现 **⊞**。
 
-`cordis.patch.yml` 里的 `config.presets` 只在**文件还不存在**时当种子用（默认那段是注释掉的示例）。
+> 安装后 profile 里是一条 `link:` 依赖（Windows 上是目录联接），所以：
+> **改 `client.js` → 刷新页面即生效**；改 `index.js`（宿主半区）→ **需要重启 DSH**。
 
----
+## 四、怎么用
 
-## 离线自检
+### 打开与收起
 
-不装任何东西、不连网、不碰 profile：
-
-```powershell
-cd C:\Users\mac\Downloads\应声插件
-node dev\verify.mjs
-```
-
-147 项检查，分三层：静态清单 → 宿主半区（假 ctx 真注册路由、真收发请求、真落盘）
-→ 浏览器半区（`node:vm` + 迷你 React 真渲染，真点 ⊞、真点格子、真翻页、真保存）。
-它**不能**替代真机验证：真实槽位、主题、光标位置只能在页面里看。
-
-**这 107 项验不到什么**（诚实说明）：
-
-- **面板在真实 DOM 里的几何**：自检里的 `elementFromPoint` 是桩，所以「侧挂」分支在自检里
-  从未真的出现过；会不会被祖先的 `overflow` 裁掉、看起来正不正，只能人眼确认。
-- **`store 变化 → 界面刷新` 这条链路**：迷你 React 不自动重渲染，断言都靠手动重挂组件观察，
-  真实 React 的时序没有覆盖到。
-- **卸载路径**（effect cleanup、订阅退订）没有覆盖。
-
----
-
-## 已知限制
-
-- **面板位置**：默认常驻在输入框左边、与它等高。空草稿时输入框卡片约 102px，比"装得下两行
-  文字"所需的最小高度（116px）还矮，所以那种情况下面板会稍微高出一点（多出来的高度全放在
-  上方，下沿和输入框对齐，不会被底部裁掉）；草稿变长、卡片高过 116px 之后就严格等高。
-  编辑预设时面板会临时向上生长（编辑框需要空间）。
-- **宽度是按实测空隙自适应的**，不写死：插件量出「输入框左边到会话列左边缘」还剩多少空隙，
-  面板宽度就取「空隙 − 8px」，夹在 120～232px 之间——所以窗口越窄、面板越窄，仍然贴左边。
-  空隙连 120px 都放不下时，才退回「输入框上方浮层」。想改上下限改 `PANEL_MIN_WIDTH` /
-  `PANEL_MAX_WIDTH`；想固定成浮层把 `SIDE_BY_SIDE` 改成 `false`。
-- **不接管键盘**：Esc、数字键都不会被面板抢走——你在输入框里打字永远不受影响。
-  关面板请点 ✕。
-- **插入偶尔被拒**，两种原因分开说：
-  - 正在发送/裁决 → 提示「正在发送，等这轮结束再点」，也不会白试；
-  - 草稿版本刚变（你正好在打字）→ 自动重抓一次光标再试，仍失败才提示「草稿刚变过，再点一次」。
-- **改完 `client.js` / `index.js` 要重启 DSH**（Node 的模块缓存换不掉）；只改
-  `presets.json` 不需要。想知道页面正在跑哪一份客户端代码：
-
-  ```powershell
-  Invoke-RestMethod http://127.0.0.1:19387/quick-input/health
-  # client.version 就是页面报到时的构建号（页面没报到过则是 null）
-  # client.layout  是版面实测数字：{ dock, width, card, free, probe, innerWidth }
-  #   free = 输入框左边还剩多少空隙；dock = 'side'（贴左边）/ 'above'（浮层）
-  #   排查「为什么没贴在左边」时先看这两个数
-  ```
-
----
-
-## 卸载
-
-插件页 → 找到这一行 → 先关掉，再删除。
-想连预设一起清掉，删掉 `C:\Users\mac\.dsh\quick-input\` 目录。
-
----
-
-## 文件一览
-
-| 文件 | 作用 |
+| 动作 | 结果 |
 |---|---|
-| `index.js` | 宿主半区：预设落盘 + `/quick-input/*` 路由（零依赖，只用 Node 内置模块） |
-| `client.js` | 浏览器半区：⊞ 按钮 + 九宫格面板 + 插入草稿（React 由宿主模块表提供，带中英字典） |
-| `presets.js` | 纯逻辑：默认种子（中/英各一套）+ 规范化 |
-| `cordis.patch.yml` | 往 profile 插一行 |
-| `icon.svg` | 插件图标 |
-| `dev/verify.mjs` | 离线自检 |
+| 点 ⊞ | 在它右侧弹出气泡（右边放不下就翻到左边） |
+| 再点 ⊞ / 点气泡里的 `×` | 收起 |
+| 点气泡外面 | 收起（点 ⊞ 自己不算"外面"） |
+| `Ctrl+Shift+K` | 开 / 收（mac 是 `Cmd+Shift+K`；Web 端默认 `Mod+Alt+K`，可在 DSH 快捷键设置里改） |
+| 刷新页面 | 一定从收起状态开始（气泡语义，不会自己冒出来） |
+
+### 找一条并插进去
+
+| 动作 | 结果 |
+|---|---|
+| 点某一格 | 该条内容**插到草稿光标处**（可撤销，不覆盖已有草稿） |
+| 在搜索框打字 | 实时过滤（匹配短标签与正文，标签命中优先），结果里显示正文摘要与所属页 |
+| 结果里 `↑` `↓` | 移动高亮 |
+| 结果里 `Enter` | 插入高亮那一条 |
+| 鼠标停在卡片上 | 约 0.45 秒后右侧浮出预览（标题、页名、字数、正文前 360 字） |
+
+预览**不接收鼠标**，所以可以径直从一张卡滑到下一张，不会被它挡住。
+
+### 页签与「最近」
+
+底部一行页签 = 分组（每页 9 格，最多 12 页）。最前面的「最近」是虚拟页：
+最近插入过的 8 条自动置顶，重复插入不会重复占位，也不写入你的预设文件。
+
+### 移动气泡
+
+按住左上角的 **六点把手 ⠿** 拖动即可；**双击把手**复位。
+位置按窗口宽度分三档记住（窄 / 中 / 宽），换显示器不会飘到屏幕外。
+
+### 整理（编辑态）
+
+点底部的 `✎` 进入编辑态：
+
+| 动作 | 结果 |
+|---|---|
+| 点某一格 | 打开编辑器（改名称、改正文），带字数计数 |
+| 编辑器里「另存为新格」 | 把当前内容复制到本页第一个空格，方便派生变体 |
+| 拖动卡片到另一格 | 同页重排（移位，不是交换） |
+| 拖动卡片到某个**页签** | 移到那一页的第一个空格；目标页满会提示且不改动 |
+| `＋` （空格子） | 新建一条 |
+| 底部 `＋` | 新增一页；页名可在编辑态改 |
+
+拖动阈值 6px：小于 6px 仍算点击，所以"拖"和"点"不会打架。
+每次移动前会校验"移动前后格子总数一致"，不一致就中止——**宁可不动，也不静默丢内容**。
+
+## 五、数据存在哪
+
+| 内容 | 位置 | 说明 |
+|---|---|---|
+| 预设（你的 prompt） | `%DSH_HOME%\quick-input\presets.json` | 默认 `C:\Users\<你>\.dsh\quick-input\presets.json` |
+| 气泡位置 | 浏览器 `localStorage` · `quick-input.pos.v1` | 按窗口宽度分档 |
+| 最近使用 | 浏览器 `localStorage` · `quick-input.recent.v1` | 最多 8 条 |
+
+`presets.json` 的格式（就是它本身的结构，可以直接手改或脚本生成）：
+
+```json
+{
+  "version": 1,
+  "pages": [
+    {
+      "title": "常用",
+      "cells": [
+        { "label": "苏格拉底问诊", "text": "我的困惑是：……" },
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    }
+  ]
+}
+```
+
+硬性限制（写入时会被自动规范化，超了会被截断）：
+
+- 每页**固定 9 格**，空格子写 `null`；最多 **12 页**
+- `label` ≤ **12 字**（卡片上显示的短标签）
+- `text` ≤ **2000 字**
+- 页名 ≤ 12 字
+
+想批量导入一批 prompt，直接改这个文件再刷新页面即可（注意别让它成为非法 JSON，否则会退回内置示例）。
+
+## 六、外观与语言
+
+- 颜色、圆角、阴影全部走 DSH 的 `--dsw-alias-*` / `--dsw-radius-*` / `--dsw-elevation-*` token，**深色主题自动跟随**
+- 界面文案中英双语，跟随 DSH 的语言设置（设置 → 通用 → 语言）
+- 动画遵循 `prefers-reduced-motion`
+
+## 七、已知限制
+
+- **不抢输入框键盘**：焦点在输入框时，方向键/Esc 仍属于输入框；要键盘操作面板，先点进面板（或点搜索框）
+- **跨页移动只追加到目标页第一个空格**（不按落点插入），避免覆盖目标页已有内容
+- 「最近」页**只读**：不能编辑、不能拖动，想改请去预设页
+- 窗口极窄（输入框左侧空间不足）时，气泡会翻到左侧或下方
+- 宿主半区 `/quick-input/health` 里的 `version` 是宿主版本号，改完 `index.js` 不重启不会更新（纯显示问题）
+- 深色主题按 token 实现，但未在每种主题下逐一目视核对
+
+## 八、开发
+
+```bash
+# 离线冒烟测试（假 React / 假 ctx，验证槽位注册、字典对齐、快捷键注册）
+node dev/smoke.cjs
+
+# 静态布局预览：把 client.js 里的 CSS 抽出来渲染成 dev/preview.html
+python dev/preview.py
+```
+
+版本与回退（本目录就是一个 git 仓库）：
+
+```bash
+git log --oneline --decorate     # 看历史
+git checkout v0.2.4              # 回到某一版（刷新页面即生效）
+git reset --hard origin/main     # 恢复成远端最新
+```
+
+| 标签 | 内容 |
+|---|---|
+| `upstream-0.1.0` | 上游原版的逐字节快照（npm tarball） |
+| `v0.2.x` | 本仓库的各次迭代 |
+
+## 九、来源与许可
+
+本项目基于 [dsh-quick-input](https://github.com/cm860712ch-cloud/dsh-quick-input)
+（MIT，© 2026 cm860712ch-cloud）二次开发：保留了它的宿主半区（预设落盘与 `/quick-input/*` 路由）
+和数据结构，**界面与交互层已重写**。
+
+原始版权声明与许可全文保留在 [LICENSE](LICENSE)；本仓库的修改同样以 MIT 发布。
 
 ---
 
-## English
+### English
 
-**Quick phrases, one click away — a 3×3 grid docked to the left of the composer.**
-Click a cell and its preset text is inserted at the caret. The pad stays resident (remembers being open across
-page reloads), matches the composer's height, and adapts its width to the space left of the input box.
-
-- **UI language** follows the DSH language setting (Settings → General → Language): Chinese UI shows Chinese,
-  English UI shows English. The starter phrases seeded on first run follow the UI language too
-  (`Common` / `Code` for English); your own edits are never translated.
-- **Paging**: 9 cells per page, up to 12 pages. The bottom bar shows `‹ 1/2 ›`, the current page name,
-  `✎` (edit) and `✕` (hide).
-- **Editing**: click `✎` → click a cell → edit name and text → Save. Empty cells create a new entry;
-  right-clicking any cell jumps straight into its editor.
-- **Insertion** uses the official `inputActions.insertText` API, so it inserts *at the caret* as one undoable
-  edit instead of replacing the draft, and it is rejected (with a clear message) while a turn is sending.
-
-### Install
-
-Repository: <https://github.com/cm860712ch-cloud/dsh-quick-input> — package name on npm: `dsh-quick-input`.
-
-1. DSH sidebar → **Plugins** → **Add plugin**
-2. Paste the absolute path to this folder (or `dsh-quick-input` once published)
-3. **Install** → **Enable** → refresh the page
-
-### Where the presets live
-
-`%DSH_HOME%\quick-input\presets.json` (default `C:\Users\<you>\.dsh\quick-input\presets.json`).
-Delete it to get the starter phrases back.
-
-### Offline self-check
-
-```powershell
-node dev\verify.mjs
-```
-
-147 checks across three layers: manifest, host half (routes, normalisation, disk writes) and browser half
-(real render via `node:vm` + a mini React: registration, insertion, paging, editing, i18n). It does **not**
-replace eyeballing the real page.
-
-### Known limitations
-
-- Docked left by default; if the space left of the composer is under 120px the pad falls back to a floating
-  panel above it.
-- No keyboard shortcuts are taken: Esc and digits still belong to the composer.
-
+A quick-phrase pad for the DSH (DeepSeek Harness) composer: click **⊞** next to the input box,
+search or pick a card, and its text is inserted at the caret as one undoable edit.
+Includes hover previews, a read-only "recent" page, drag-to-move with remembered position,
+and edit-mode reordering with cross-page moves. Presets live in
+`%DSH_HOME%\quick-input\presets.json` (9 cells per page, up to 12 pages).
+Forked from [dsh-quick-input](https://github.com/cm860712ch-cloud/dsh-quick-input) (MIT);
+the UI layer has been rewritten.
