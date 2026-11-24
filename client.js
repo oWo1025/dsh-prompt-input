@@ -1,5 +1,5 @@
 /**
- * 应声 · 快捷输入 —— 浏览器半区。
+ * 快捷输入 —— 浏览器半区。
  *
  * 这段代码不是被 import 的，而是被 DSH 的客户端模块加载器当成脚本文本取走、
  * 在页面里执行。约定：
@@ -29,7 +29,7 @@ window.__ModuleLoader__.load({
     const API = '/quick-input'
 
     /** 客户端构建号：页面加载时回报给宿主，`GET /quick-input/health` 里能看到跑的是哪一份。 */
-    const CLIENT_BUILD = '0.2.4+build1'
+    const CLIENT_BUILD = '0.2.5+build1'
 
     /** 文案命名空间：注册槽位时带上它，槽位就会把 `t` 交给组件。 */
     const NS = 'quick-input'
@@ -97,6 +97,10 @@ window.__ModuleLoader__.load({
         moveHint: '拖到别的格子或页签上可换位置（仅编辑态）',
         movedCell: '已移动',
         recentTab: '最近',
+        tabsPrev: '向前翻页签',
+        tabsNext: '向后翻页签',
+        emptyPageTitle: '这一页还空着',
+        emptyPageHint: '点底部的 ✎ 添加第一条',
         recentHint: '最近点过的 prompt（自动保留 8 条，不可编辑）',
         moveFailed: '这次移动会丢内容，已取消',
       },
@@ -157,6 +161,10 @@ window.__ModuleLoader__.load({
         moveHint: 'Drag onto another card or a tab to move it (edit mode)',
         movedCell: 'Moved',
         recentTab: 'Recent',
+        tabsPrev: 'Scroll tabs left',
+        tabsNext: 'Scroll tabs right',
+        emptyPageTitle: 'This page is empty',
+        emptyPageHint: 'Click ✎ at the bottom to add one',
         recentHint: 'Recently inserted prompts (last 8, read-only)',
         moveFailed: 'That move would lose a cell — cancelled',
       },
@@ -206,7 +214,8 @@ window.__ModuleLoader__.load({
     const VIEWPORT_MARGIN = 12
 
     const CSS = `
-.dsq-btn{box-sizing:border-box;width:28px;height:28px;flex:none;display:grid;place-items:center;padding:0;border:0;border-radius:999px;background:transparent;color:var(--dsw-alias-label-secondary,#667085);cursor:pointer;transition:background-color .12s ease,color .12s ease}
+.dsq-btn{box-sizing:border-box;width:28px;height:28px;flex:none;display:grid;place-items:center;padding:0;border:0;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary,#667085);cursor:pointer;transition:background-color .12s ease,color .12s ease,transform .12s ease}
+.dsq-btn:active{transform:scale(.94)}
 .dsq-btn:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#1f2328)}
 .dsq-btn-on{color:var(--dsw-alias-brand-primary,#4d6bfe);background:var(--dsw-alias-bg-module-platform,rgba(127,127,127,.1))}
 
@@ -218,8 +227,8 @@ window.__ModuleLoader__.load({
 .dsq-searchwrap{position:relative;flex:1;min-width:0;display:flex}
 .dsq-searchicon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--dsw-alias-label-caption,#98a2b3);pointer-events:none}
 .dsq-search{box-sizing:border-box;width:100%;height:30px;padding:0 10px 0 28px;border:1px solid transparent;border-radius:var(--dsw-radius-md,10px);background:var(--dsw-alias-bg-module-platform,rgba(127,127,127,.07));color:inherit;font-family:inherit;font-size:12px;line-height:16px;outline:none;transition:border-color .12s ease,background-color .12s ease}
-.dsq-search::placeholder{color:var(--dsw-alias-label-caption,#98a2b3)}
-.dsq-search:focus{border-color:var(--dsw-alias-border-selected,var(--dsw-alias-brand-primary,#4d6bfe));background:var(--dsw-alias-bg-layer-2,#fff)}
+.dsq-search::placeholder{color:var(--dsw-alias-label-secondary,#667085);opacity:.9}
+.dsq-search:focus{border-color:var(--dsw-alias-border-selected,var(--dsw-alias-brand-primary,#4d6bfe));background:var(--dsw-alias-bg-layer-2,#fff);box-shadow:0 0 0 3px color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 14%,transparent)}
 .dsq-x{box-sizing:border-box;flex:none;width:26px;height:26px;padding:0;border:0;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary,#667085);font-size:15px;line-height:1;cursor:pointer}
 .dsq-x:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#1f2328)}
 
@@ -227,11 +236,11 @@ window.__ModuleLoader__.load({
 .dsq-body{flex:0 0 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .dsq-body-auto{flex:1 1 auto;min-height:120px;overflow-y:auto;scrollbar-width:thin}
 .dsq-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:52px;gap:6px;height:168px;overflow-y:auto;padding-right:2px;scrollbar-width:thin}
-.dsq-card{box-sizing:border-box;display:flex;flex-direction:column;gap:1px;align-items:flex-start;justify-content:flex-start;padding:7px 8px;border:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.08));border-radius:var(--dsw-radius-md,10px);background:transparent;color:inherit;font-family:inherit;font-size:12px;line-height:16px;text-align:left;cursor:pointer;overflow:hidden;transition:background-color .12s ease,border-color .12s ease,transform .1s ease}
-.dsq-card:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1));border-color:var(--dsw-alias-border-l2,rgba(0,0,0,.16))}
-.dsq-card:active{transform:scale(.985)}
+.dsq-card{box-sizing:border-box;display:flex;flex-direction:column;gap:1px;align-items:flex-start;justify-content:flex-start;padding:7px 8px;border:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.08));border-radius:var(--dsw-radius-md,10px);background:transparent;color:inherit;font-family:inherit;font-size:12px;line-height:16px;text-align:left;cursor:pointer;overflow:hidden;transition:background-color .12s ease,border-color .12s ease,box-shadow .16s ease,transform .12s ease}
+.dsq-card:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1));border-color:color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 24%,var(--dsw-alias-border-l2,rgba(0,0,0,.16)));box-shadow:0 6px 16px -10px color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 55%,transparent);transform:translateY(-1px)}
+.dsq-card:active{transform:translateY(0) scale(.99);box-shadow:none}
 .dsq-card:focus-visible{outline:none;border-color:var(--dsw-alias-border-selected,var(--dsw-alias-brand-primary,#4d6bfe));box-shadow:0 0 0 2px color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 22%,transparent)}
-.dsq-card-label{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;width:100%;overflow-wrap:anywhere;font-weight:500}
+.dsq-card-label{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;width:100%;overflow-wrap:anywhere;font-weight:600;letter-spacing:-.01em}
 .dsq-card-sub{width:100%;font-size:10px;line-height:12px;color:var(--dsw-alias-label-caption,#98a2b3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dsq-card-empty{align-items:center;justify-content:center;border-style:dashed;color:var(--dsw-alias-label-caption,#98a2b3);font-size:14px;font-weight:400}
 
@@ -247,7 +256,8 @@ window.__ModuleLoader__.load({
 .dsq-tabsrow{display:flex;align-items:center;gap:6px;flex:none;min-width:0;overflow:hidden}
 .dsq-tabs{display:flex;align-items:center;gap:4px;flex:1 1 0;min-width:0;overflow-x:auto;scrollbar-width:none;padding:1px}
 .dsq-tabs::-webkit-scrollbar{display:none}
-.dsq-tab{box-sizing:border-box;flex:none;height:24px;padding:0 8px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--dsw-alias-label-secondary,#667085);font-family:inherit;font-size:11.5px;line-height:22px;cursor:pointer;white-space:nowrap;transition:background-color .12s ease,color .12s ease,border-color .12s ease}
+.dsq-tab{box-sizing:border-box;flex:none;height:24px;padding:0 7px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--dsw-alias-label-secondary,#667085);font-family:inherit;font-size:11px;line-height:22px;cursor:pointer;white-space:nowrap;transition:background-color .12s ease,color .12s ease,border-color .12s ease,transform .12s ease}
+.dsq-tab:active{transform:scale(.96)}
 .dsq-tab:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1));color:var(--dsw-alias-label-primary,#1f2328)}
 .dsq-tab-on{background:color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 10%,transparent);border-color:color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 26%,transparent);color:var(--dsw-alias-label-primary,#1f2328);font-weight:600}
 .dsq-tab:focus-visible{outline:none;border-color:var(--dsw-alias-border-selected,var(--dsw-alias-brand-primary,#4d6bfe))}
@@ -271,6 +281,8 @@ window.__ModuleLoader__.load({
 .dsq-err{color:var(--dsw-alias-state-error-primary,#d92d20)}
 .dsq-muted{color:var(--dsw-alias-label-secondary,#667085)}
 
+/* 半径约定：气泡 16 / 卡片 10 / 输入框与按钮 8 / 页签胶囊 999（全局只此一套） */
+
 /* 拖拽：标题行被搜索框占满，所以左上角单独给一个六点把手 */
 .dsq-grip{flex:none;width:16px;height:30px;display:grid;place-items:center;color:var(--dsw-alias-label-caption,#98a2b3);cursor:grab;border-radius:var(--dsw-radius-sm,8px);user-select:none;transition:background-color .12s ease,color .12s ease}
 .dsq-grip:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1));color:var(--dsw-alias-label-secondary,#667085)}
@@ -287,6 +299,13 @@ window.__ModuleLoader__.load({
 .dsq-preview-meta{font-size:10px;line-height:14px;color:var(--dsw-alias-label-caption,#98a2b3);margin-bottom:6px}
 .dsq-preview-text{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--dsw-alias-label-secondary,#667085);max-height:168px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 74%,transparent);mask-image:linear-gradient(#000 74%,transparent)}
 .dsq-preview-foot{margin-top:7px;font-size:10px;line-height:14px;color:var(--dsw-alias-label-caption,#98a2b3)}
+
+/* 页签溢出：两端渐隐，提示"还有更多" */
+.dsq-tabs-scroll{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 12px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 12px,#000 calc(100% - 12px),transparent 100%)}
+
+/* 空页：给一个可执行的空状态，而不是一片空白 */
+.dsq-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:168px;text-align:center;color:var(--dsw-alias-label-secondary,#667085);font-size:12px;line-height:18px}
+.dsq-empty-title{font-weight:600;color:var(--dsw-alias-label-primary,#1f2328)}
 `
 
     // ------------------------------------------------------------ 小工具
@@ -694,11 +713,11 @@ window.__ModuleLoader__.load({
           dots.push(
             h('rect', {
               key: `${row}-${column}`,
-              x: 1.5 + column * 5,
-              y: 1.5 + row * 5,
-              width: 3.4,
-              height: 3.4,
-              rx: 1.1,
+              x: 0.6 + column * 5.5,
+              y: 0.6 + row * 5.5,
+              width: 4,
+              height: 4,
+              rx: 1.2,
             }),
           )
         }
@@ -990,6 +1009,8 @@ window.__ModuleLoader__.load({
       const [cellDrag, setCellDrag] = React.useState(null)
       const timers = React.useRef({ show: 0, hide: 0, last: 0 })
       const rootRef = React.useRef(null)
+      const tabsRef = React.useRef(null)
+      const [tabsScrollable, setTabsScrollable] = React.useState(false)
 
       // 关掉面板就把预览和计时器一起清掉。
       React.useEffect(() => {
@@ -1042,6 +1063,52 @@ window.__ModuleLoader__.load({
           }
         }
       }, [open])
+
+      // 页签溢出检测：溢出时给左右翻页按钮 + 两端渐隐，否则第 7 页根本看不到。
+      React.useEffect(() => {
+        if (!open) return undefined
+        const measure = () => {
+          const node = tabsRef.current
+          if (!node) return
+          const overflow = node.scrollWidth > node.clientWidth + 1
+          setTabsScrollable((previous) => (previous === overflow ? previous : overflow))
+        }
+        measure()
+        const disposers = []
+        if (typeof window.ResizeObserver === 'function' && tabsRef.current) {
+          try {
+            const observer = new window.ResizeObserver(measure)
+            observer.observe(tabsRef.current)
+            disposers.push(() => observer.disconnect())
+          } catch {
+            /* 观察不了就靠定时器 */
+          }
+        }
+        const timer = setInterval(measure, 700)
+        disposers.push(() => clearInterval(timer))
+        return () => {
+          for (const dispose of disposers) {
+            try {
+              dispose()
+            } catch {
+              /* 忽略 */
+            }
+          }
+        }
+      }, [open, sessionId, store.doc.pages.length, store.recentView.get(sessionId)])
+
+      // 当前页签始终滚在可视区内（切页 / 新增页 / 点「最近」之后）。
+      React.useEffect(() => {
+        if (!open) return
+        const node = tabsRef.current
+        if (!node) return
+        const active = node.querySelector('[data-active="true"]')
+        if (!active) return
+        const left = active.offsetLeft
+        const right = left + active.offsetWidth
+        if (left < node.scrollLeft) node.scrollLeft = Math.max(0, left - 6)
+        else if (right > node.scrollLeft + node.clientWidth) node.scrollLeft = right - node.clientWidth + 6
+      }, [open, sessionId, store.page.get(sessionId), store.recentView.get(sessionId), store.doc.pages.length])
 
       // 点面板外关闭：面板外 + ⊞ 外才算外（和 DSH 菜单的判定一致）。
       React.useEffect(() => {
@@ -1423,7 +1490,11 @@ window.__ModuleLoader__.load({
 
       const tabs = h(
         'div',
-        { className: 'dsq-tabs', role: 'tablist' },
+        {
+          ref: tabsRef,
+          className: tabsScrollable ? 'dsq-tabs dsq-tabs-scroll' : 'dsq-tabs',
+          role: 'tablist',
+        },
         recent.length > 0
           ? h(
               'button',
@@ -1432,6 +1503,7 @@ window.__ModuleLoader__.load({
                 type: 'button',
                 role: 'tab',
                 'aria-selected': showRecent ? 'true' : 'false',
+                'data-active': showRecent ? 'true' : 'false',
                 className: showRecent ? 'dsq-tab dsq-tab-on' : 'dsq-tab',
                 title: t('recentHint'),
                 onMouseDown: keepFocus,
@@ -1453,6 +1525,7 @@ window.__ModuleLoader__.load({
               type: 'button',
               role: 'tab',
               'aria-selected': !showRecent && index === pageIndex ? 'true' : 'false',
+              'data-active': !showRecent && index === pageIndex ? 'true' : 'false',
               'data-page': index,
               className:
                 (!showRecent && index === pageIndex ? 'dsq-tab dsq-tab-on' : 'dsq-tab') +
@@ -1461,6 +1534,17 @@ window.__ModuleLoader__.load({
                   : ''),
               title: t('pageHint', { title: item.title, index: index + 1, total: Math.max(pages.length, 1) }),
               onMouseDown: keepFocus,
+              onKeyDown: (event) => {
+                if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
+                const step = event.key === 'ArrowRight' ? 1 : -1
+                const next = Math.min(Math.max(index + step, 0), pages.length - 1)
+                if (next === index) return
+                event.preventDefault()
+                store.recentView.set(sessionId, false)
+                store.page.set(sessionId, next)
+                store.editing.set(sessionId, null)
+                store.emit()
+              },
               onClick: () => {
                 store.recentView.set(sessionId, false)
                 store.page.set(sessionId, index)
@@ -1624,15 +1708,56 @@ window.__ModuleLoader__.load({
         body = list
       } else if (showRecent) {
         body = recentGrid
+      } else if (page && page.cells.every((cell) => !cell) && !editMode) {
+        body = h(
+          'div',
+          { className: 'dsq-empty' },
+          h('div', { className: 'dsq-empty-title' }, t('emptyPageTitle')),
+          h('div', null, t('emptyPageHint')),
+        )
       } else {
         body = grid
       }
 
       // 页签放在最后一行：气泡底部锚定，换页时这一行不会上下移动。
+      const nudgeTabs = (direction) => {
+        const node = tabsRef.current
+        if (!node) return
+        node.scrollLeft += direction * Math.max(80, Math.round(node.clientWidth * 0.6))
+      }
+
       const tabsRow = h(
         'div',
         { className: 'dsq-tabsrow' },
+        tabsScrollable
+          ? h(
+              'button',
+              {
+                type: 'button',
+                className: 'dsq-mini',
+                title: t('tabsPrev'),
+                'aria-label': t('tabsPrev'),
+                onMouseDown: keepFocus,
+                onClick: () => nudgeTabs(-1),
+              },
+              '‹',
+            )
+          : null,
         tabs,
+        tabsScrollable
+          ? h(
+              'button',
+              {
+                type: 'button',
+                className: 'dsq-mini',
+                title: t('tabsNext'),
+                'aria-label': t('tabsNext'),
+                onMouseDown: keepFocus,
+                onClick: () => nudgeTabs(1),
+              },
+              '›',
+            )
+          : null,
         h(
           'span',
           {

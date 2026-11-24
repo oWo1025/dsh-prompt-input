@@ -1,4 +1,4 @@
-# 应声 · 快捷输入的配置层。
+# 快捷输入的配置层。
 #
 # 这里插一行，就把「宿主半区（index.js）+ 浏览器半区（client.js）」一起挂上；
 # 两个半区同属一个包，靠 package.json 里的 dsh.bundle / dsh.client 声明。

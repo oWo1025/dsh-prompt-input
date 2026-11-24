@@ -60,7 +60,7 @@ def grid(names, edit=False):
     return '<div class="dsq-grid3" role="group">' + "".join(cells) + "</div>"
 
 
-def popover(title, names, active=0, query="", results=None):
+def popover(title, names, active=0, query="", results=None, overflow=False, empty=False):
     if results is not None:
         body = '<div class="dsq-results" role="listbox">' + "".join(
             f'<button class="dsq-item{" dsq-item-on" if i == 0 else ""}">'
@@ -69,12 +69,26 @@ def popover(title, names, active=0, query="", results=None):
             f'<span class="dsq-item-page">{r[2]}</span></button>'
             for i, r in enumerate(results)
         ) + "</div>"
+    elif empty:
+        body = (
+            '<div class="dsq-empty">'
+            '<div class="dsq-empty-title">这一页还空着</div>'
+            "<div>点底部的 ✎ 添加第一条</div></div>"
+        )
     else:
         body = grid(names)
+
+    tab_names = ["常用", "代码", "问清·学", "解题·决", "指挥①", "指挥②"]
+    if overflow:
+        tab_names = ["最近"] + tab_names + ["第 7 页"]
     tabs = "".join(
         f'<button class="dsq-tab{" dsq-tab-on" if i == active else ""}">{t}</button>'
-        for i, t in enumerate(["常用", "代码", "问清·学", "解题·决", "指挥①", "指挥②"])
+        for i, t in enumerate(tab_names)
     )
+    tabs_cls = "dsq-tabs dsq-tabs-scroll" if overflow else "dsq-tabs"
+    arrow_l = '<button class="dsq-mini">‹</button>' if overflow else ""
+    arrow_r = '<button class="dsq-mini">›</button>' if overflow else ""
+    total = len(tab_names)
     return f"""
     <div class="slot">
       <div class="caption">{title}</div>
@@ -92,8 +106,10 @@ def popover(title, names, active=0, query="", results=None):
         </div>
         <div class="dsq-body">{body}</div>
         <div class="dsq-tabsrow">
-          <div class="dsq-tabs" role="tablist">{tabs}</div>
-          <span class="dsq-count">{active + 1}/6</span>
+          {arrow_l}
+          <div class="{tabs_cls}" role="tablist">{tabs}</div>
+          {arrow_r}
+          <span class="dsq-count">{active + 1}/{total}</span>
           <button class="dsq-mini">✎</button>
         </div>
       </div>
@@ -137,6 +153,8 @@ html = f"""<!DOCTYPE html>
 {popover("A · 9 格页（内容满）", CARDS9, active=0)}
 {popover("B · 2 格页（内容少，应与 A 等高）", ["继续", "先给结论"], active=1)}
 {popover("C · 搜索态", [], active=0, query="苏格拉底", results=RESULTS)}
+{popover("D · 8 个页签（溢出，左右翻页 + 两端渐隐）", CARDS9, active=2, overflow=True)}
+{popover("E · 空页", [], empty=True)}
 </div>
 <div class="dsq-preview" style="left:640px;top:545px;width:300px">
   <div class="dsq-preview-title">苏格拉底问诊</div>

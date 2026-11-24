@@ -1,5 +1,5 @@
 /**
- * 应声 · 快捷输入 —— 宿主半区。
+ * 快捷输入 —— 宿主半区。
  *
  * 职责只有两件：
  *   1. 持有预设（$DSH_HOME/quick-input/presets.json），首次使用时写入默认种子；
@@ -20,7 +20,7 @@ import { defaultPresets, normalizePresets } from './presets.js'
 export const name = 'quick-input'
 
 /** 与 package.json 对齐，只用于 /health 自证。 */
-const VERSION = '0.2.4'
+const VERSION = '0.2.5'
 
 const ROUTE_PATH = '/quick-input'
 const BODY_LIMIT = 256 * 1024
