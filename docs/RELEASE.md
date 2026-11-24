@@ -18,21 +18,25 @@
 | 版本号 | `0.2.9` | 语义化：功能加版本 |
 | `engines` / peer 声明 | 未声明 | 市场会显示"兼容性未知"，若要显示需补 `engines.dsh` |
 
-## 二、包名（如果要发 npm）
+## 二、包名
 
-上游 `dsh-quick-input` 这个 npm 名属于原作者，**不能同名发布**。三个方向：
+已定名 **`dsh-prompt-input`**（v0.3.0 起）。上游 `dsh-quick-input` 这个 npm 名属于原作者，
+换名之后两者彻底分开，可以各自发版。
 
-| 包名 | 含义 | 备注 |
+改名连带改了四处，缺一个都会出问题：
+
+| 位置 | 值 | 说明 |
 |---|---|---|
-| `dsh-prompt-pad` | prompt 面板 | 最贴现在的形态（气泡 + 卡片 + 搜索） |
-| `dsh-quick-input-pro` | 快捷输入的加强版 | 延续感强，但 "pro" 略空 |
-| `@owo1025/dsh-quick-input` | 作用域包 | **零撞名风险**，市场里也有不少作用域包（如 `@anonyjcy/dsh-j-space`） |
+| `package.json` `name` | `dsh-prompt-input` | 插件目录名 |
+| `client.js` 模块 id | `dsh-prompt-input` | **必须等于包名**，浏览器半区靠它注册 |
+| `cordis.patch.yml` 行 `name` | `dsh-prompt-input` | 告诉 Loader 加载哪个包 |
+| `README` / 条目 `url` | 新仓库地址 | 市场页面的链接 |
 
-> **只在 GitHub 发布的话可以不改名**：市场条目支持 `install: dsh plugin --profile web add github:owner/repo`，
-> 现有条目里有大量 `npm: null` 的 GitHub 直装插件。改名是"要发 npm"才必须做的事。
+**不受影响**（改名只动"包"，不动"数据"）：`%DSH_HOME%\quick-input\presets.json`、
+路由 `/quick-input/*`、`localStorage` 的 `quick-input.pos.v1` / `quick-input.recent.v1`。
+所以已经填好的 prompt、面板位置、最近使用都还在。
 
-改名后要连带改：`package.json` 的 `name`、市场条目的 `name` 与 `install`，并**重装一次**
-（profile 里那条依赖指向旧包名）。
+改名之后必须**卸载旧包再装新包**：两者注册同一个插件行 id（`quick-input`），同时存在会撞 id。
 
 ## 三、市场条目
 
@@ -43,17 +47,17 @@
 {
   "name": "dsh-prompt-pad",
   "owner": "oWo1025",
-  "url": "https://github.com/oWo1025/dsh-quick-input",
+  "url": "https://github.com/oWo1025/dsh-prompt-input",
   "category": "ui",
   "description": {
     "zh": "DSH 输入框旁的 prompt 面板：点叠卡图标弹出气泡，搜索或点选预设短语，文字插入光标处（可撤销、不覆盖草稿）。含悬停预览、最近使用、拖动排序、跨页移动与全局快捷键。基于 dsh-quick-input（MIT，cm860712ch-cloud）二次开发，界面与交互层已重写。",
     "en": "A prompt pad beside the DSH composer: open a popover from the stack icon, search or click a saved phrase, and it is inserted at the caret as one undoable edit. Adds hover preview, a recent-used page, drag-to-reorder, cross-page moves and a global hotkey. Fork of dsh-quick-input (MIT, cm860712ch-cloud); the UI layer has been rewritten."
   },
   "npm": null,
-  "install": "dsh plugin --profile web add github:oWo1025/dsh-quick-input",
-  "icon": "https://raw.githubusercontent.com/oWo1025/dsh-quick-input/main/icon.svg",
+  "install": "dsh plugin --profile web add github:oWo1025/dsh-prompt-input",
+  "icon": "https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/icon.svg",
   "screenshots": [
-    "https://raw.githubusercontent.com/oWo1025/dsh-quick-input/main/docs/panel.png"
+    "https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/docs/panel.png"
   ]
 }
 ```
@@ -91,7 +95,7 @@
 
 ```bash
 # 1) fork 上游后克隆你的 fork
-git clone https://github.com/oWo1025/dsh-quick-input-upstream.git upstream-pr
+git clone https://github.com/oWo1025/dsh-quick-input.git upstream-pr
 cd upstream-pr
 git remote add upstream https://github.com/cm860712ch-cloud/dsh-quick-input.git
 git fetch upstream
@@ -101,7 +105,7 @@ git checkout -b feat/popover-ui upstream/HEAD
 
 # 3) 只把运行时文件的变化打过去（不要带 README 重写、dev 脚本、版本号）
 #    在本仓库执行，产出补丁：
-git -C E:/dsh/quick-input-dev diff upstream-0.1.0 HEAD -- client.js index.js icon.svg > popover.patch
+git -C E:/dsh/dsh-prompt-input diff upstream-0.1.0 HEAD -- client.js index.js icon.svg > popover.patch
 
 # 4) 应用并自己验一遍
 git apply --stat popover.patch

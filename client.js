@@ -17,7 +17,7 @@
  */
 
 window.__ModuleLoader__.load({
-  id: 'dsh-quick-input',
+  id: 'dsh-prompt-input',
   factory(require) {
     const React = require('react')
     const h = React.createElement
@@ -29,7 +29,7 @@ window.__ModuleLoader__.load({
     const API = '/quick-input'
 
     /** 客户端构建号：页面加载时回报给宿主，`GET /quick-input/health` 里能看到跑的是哪一份。 */
-    const CLIENT_BUILD = '0.2.9+build1'
+    const CLIENT_BUILD = '0.3.0+build1'
 
     /** 文案命名空间：注册槽位时带上它，槽位就会把 `t` 交给组件。 */
     const NS = 'quick-input'

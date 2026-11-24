@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 — 改名 dsh-prompt-input
+
+- 包名 `dsh-quick-input` → **`dsh-prompt-input`**，与上游彻底分开（npm 上原名属于原作者）。
+- 连带改动：客户端模块 id（`window.__ModuleLoader__.load({ id })` 必须等于包名）、
+  `cordis.patch.yml` 的行 `name`、`package.json` 的 `repository` / `homepage` / `bugs`。
+- **数据位置不变**：仍是 `%DSH_HOME%\quick-input\presets.json`，路由仍是 `/quick-input/*`，
+  `localStorage` 键也不变——已填的 prompt、面板位置、最近使用都不受影响。
+- 升级方式：卸载旧包 → 从新目录安装。新旧包注册同一个插件行 id，不能并存。
+
 ## 0.2.9 — 强调色改用真实品牌蓝
 
 **问题**：预览图里是高饱和蓝，实际界面却是黑灰。

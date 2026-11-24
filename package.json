@@ -1,17 +1,17 @@
 {
-  "name": "dsh-quick-input",
-  "version": "0.2.9",
+  "name": "dsh-prompt-input",
+  "version": "0.3.0",
   "description": "快捷输入：点开输入框左侧的叠卡图标，从气泡里搜索/点选预设短语并插到光标处。Popover quick-phrase pad with search: open from ⊞ beside the composer, click a card to insert at the caret.",
   "type": "module",
   "license": "MIT",
   "author": "oWo1025",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/oWo1025/dsh-quick-input.git"
+    "url": "git+https://github.com/oWo1025/dsh-prompt-input.git"
   },
-  "homepage": "https://github.com/oWo1025/dsh-quick-input#readme",
+  "homepage": "https://github.com/oWo1025/dsh-prompt-input#readme",
   "bugs": {
-    "url": "https://github.com/oWo1025/dsh-quick-input/issues"
+    "url": "https://github.com/oWo1025/dsh-prompt-input/issues"
   },
   "keywords": [
     "deepseek",
