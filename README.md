@@ -186,20 +186,22 @@ git reset --hard origin/main     # 恢复成远端最新
 
 ## 九、来源与许可
 
-本项目基于 [dsh-quick-input](https://github.com/cm860712ch-cloud/dsh-quick-input)
-（MIT，© 2026 cm860712ch-cloud）二次开发：保留了它的宿主半区（预设落盘与 `/quick-input/*` 路由）
-和数据结构，**界面与交互层已重写**。
+本项目是 [dsh-quick-input](https://github.com/cm860712ch-cloud/dsh-quick-input)（MIT，
+© 2026 cm860712ch-cloud）的**衍生版本**，不是上游官方发布。
 
-原始版权声明与许可全文保留在 [LICENSE](LICENSE)；本仓库的修改同样以 MIT 发布。
+保留自上游的部分：
 
----
+- 宿主半区 `index.js`（预设落盘与 `/quick-input/*` 路由）与 `presets.js` 的规范化逻辑
+- `presets.json` 的数据结构（每页 9 格、最多 12 页、`label` ≤12 字、`text` ≤2000 字）
+- 编辑器的基本交互（改名、改内容、清空、增删页）
 
-### English
+本仓库重写的部分：
 
-A quick-phrase pad for the DSH (DeepSeek Harness) composer: click the **stack icon** next to the input box,
-search or pick a card, and its text is inserted at the caret as one undoable edit.
-Includes hover previews, a read-only "recent" page, drag-to-move with remembered position,
-and edit-mode reordering with cross-page moves. Presets live in
-`%DSH_HOME%\quick-input\presets.json` (9 cells per page, up to 12 pages).
-Forked from [dsh-quick-input](https://github.com/cm860712ch-cloud/dsh-quick-input) (MIT);
-the UI layer has been rewritten.
+- 渲染槽位：`conversation.input.overlay` → `shell.overlay`
+- 面板形态：贴边常驻 → 锚定气泡（可拖动、位置记忆）
+- 新增：搜索、悬停预览、最近使用、编辑态拖动排序、跨页移动、另存为新格、全局快捷键
+- 全部视觉与图标
+
+原始版权声明与许可全文见 [LICENSE](LICENSE)；本仓库的修改同样以 MIT 发布。
+上游若发布新版本，可以 `git remote add upstream` 后合并——本仓库的历史保留了
+`upstream-0.1.0` 标签作为逐字节基线。
