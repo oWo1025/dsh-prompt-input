@@ -1,7 +1,7 @@
 {
   "name": "dsh-prompt-input",
-  "version": "0.3.3",
-  "description": "快捷输入：点开输入框左侧的叠卡图标，从气泡里搜索/点选预设短语并插到光标处。Popover quick-phrase pad with search: open from ⊞ beside the composer, click a card to insert at the caret.",
+  "version": "0.3.4",
+  "description": "Prompt 面板：点输入框工具行左侧的叠卡图标弹出气泡，搜索或点选预设短语，插入到草稿光标处（可撤销、不覆盖草稿）。Prompt pad beside the DSH composer: open a popover from the stacked-cards icon, search or click a saved phrase, and it is inserted at the caret as one undoable edit.",
   "type": "module",
   "license": "MIT",
   "author": "oWo1025",
@@ -49,7 +49,9 @@
     "icon.svg",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "icon-256.png",
+    "screenshots.json"
   ],
   "dsh": {
     "bundle": {

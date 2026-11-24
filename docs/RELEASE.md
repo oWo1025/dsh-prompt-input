@@ -38,50 +38,76 @@
 
 改名之后必须**卸载旧包再装新包**：两者注册同一个插件行 id（`quick-input`），同时存在会撞 id。
 
-## 三、市场条目
+## 三、市场条目（真实格式）
 
-市场（dshmarket）自己不存插件列表，它读精选列表 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)
-生成的索引。一条条目大致是这些字段（照该仓库的提交格式填，字段语义如下）：
+市场列表来自 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)。
+按它的 [contributing.md](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/contributing.md)：
 
-```json
-{
-  "name": "dsh-prompt-pad",
-  "owner": "oWo1025",
-  "url": "https://github.com/oWo1025/dsh-prompt-input",
-  "category": "ui",
-  "description": {
-    "zh": "DSH 输入框旁的 prompt 面板：点叠卡图标弹出气泡，搜索或点选预设短语，文字插入光标处（可撤销、不覆盖草稿）。含悬停预览、最近使用、拖动排序、跨页移动与全局快捷键。基于 dsh-quick-input（MIT，cm860712ch-cloud）二次开发，界面与交互层已重写。",
-    "en": "A prompt pad beside the DSH composer: open a popover from the stack icon, search or click a saved phrase, and it is inserted at the caret as one undoable edit. Adds hover preview, a recent-used page, drag-to-reorder, cross-page moves and a global hotkey. Fork of dsh-quick-input (MIT, cm860712ch-cloud); the UI layer has been rewritten."
-  },
-  "npm": null,
-  "install": "dsh plugin --profile web add github:oWo1025/dsh-prompt-input",
-  "icon": "https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/icon.svg",
-  "screenshots": [
-    "https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/docs/01-main.png",
-    "https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/docs/03-search.png",
-    "https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/docs/04-edit-grid.png",
-    "https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/docs/02-edit-cell.png",
-    "https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/docs/05-empty-page.png"
-  ]
-}
+> **两个 README 由脚本生成，请勿手工编辑。** 列表数据在 `data/plugins/`，一个插件一个 YAML 文件。
+
+### 要提交的文件
+
+路径：`data/plugins/<owner>__<repo>.yml` → 我们的是 **`data/plugins/oWo1025__dsh-prompt-input.yml`**
+
+```yaml
+url: https://github.com/oWo1025/dsh-prompt-input
+name: oWo1025/dsh-prompt-input
+category: ui
+description:
+  en: 'Prompt pad beside the DSH composer: open a popover from the stacked-cards icon, search or click a saved phrase, and it is inserted at the caret as one undoable edit. Adds hover preview, a recent-used page, drag-to-reorder and a global hotkey. Fork of dsh-quick-input (MIT, cm860712ch-cloud); the UI layer has been rewritten.'
+  zh: 'DSH 输入框旁的 Prompt 面板：点叠卡图标弹出气泡，搜索或点选预设短语，插入到草稿光标处（可撤销、不覆盖草稿）。含悬停预览、最近使用、拖动排序与全局快捷键。基于 dsh-quick-input（MIT，cm860712ch-cloud）二次开发，界面与交互层已重写。'
+icon: https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/icon-256.png
 ```
 
-要点：
+⚠️ **描述里含 `: `（冒号加空格）必须加引号**，否则 YAML 会当成嵌套键。上面两行都加了。
 
-- `category` 用 `ui`（界面增强）。
-- **必须写明 fork 关系**，现有条目里已有先例（如 `dsh-free-mode` 写 "Repackaged from …"、`dsh-pua` 的修订版写 "Fork of …"）。
-- `install` 与 `name` 要对上你要发布的那份。
-- `capabilities` 由站点自动检测，不用自己填。
+### 分类
 
-## 四、上架步骤
+`category: ui`（界面增强）。合法取值见 contributing.md 的分类列表，共 24 个。
+
+### 要求（逐条对照）
+
+| 要求 | 我们 |
+|---|---|
+| `package.json` 声明 **`dsh.bundle`**（只声明 `dsh.client` 会被拒，这是最常见的退回原因） | ✅ `"dsh": { "bundle": { "patch": "./cordis.patch.yml" } }` |
+| 插件真实可运行（不是空壳） | ✅ 这套已经在你机器上日常在用 |
+| 仓库至少存在 1 天（未满会被自动重新检查） | ⚠️ 仓库是今天建的/改名的，**第一天会被这条挡住**，隔天再提 |
+| GitHub 仓库加 `dsh-plugin` topic | ⬜ 待做（仓库页右上 About → 齿轮 → Topics） |
+| 发 npm 的话，`repository` 要指回被收录的仓库 | ✅ 已指向本仓库；不发 npm 则无所谓 |
+| 单条描述不夸大、不写营销话术 | ✅ 只写功能与 fork 关系 |
+| 一个 PR 最多 3 条 | ✅ 我们只提 1 条 |
+
+### 截图：放在**我们自己仓库**的 `screenshots.json`
+
+不是写进 YAML。在 package.json 旁边放一个 `screenshots.json`，内容是相对路径数组（1–8 张），
+市场会去读：
+
+```json
+["docs/01-main.png", "docs/03-search.png", "docs/04-edit-grid.png", "docs/02-edit-cell.png", "docs/05-empty-page.png"]
+```
+
+仓库里已经有这个文件了。也可以用绝对地址，但必须是 GitHub 托管的。
+
+### 图标：必须是位图
+
+contributing.md 明确要求 **GitHub 托管的位图**（png/jpg/webp），**SVG 会被拒**，尺寸按 ~96px 方图设计。
+所以我们在 `icon.svg` 之外另存了 `icon-256.png`，条目里指向它。
+
+### 不要做的事
+
+- ❌ 不要手工编辑那两个生成的 README（会被脚本覆盖，PR 也容易冲突）
+- ❌ 不要自己往 YAML 里写 `npm:` 字段（会被拒）
+- ❌ 不要往 `dsh-market` 那个市场仓库提条目——它的 README 写着"这个仓库是市场应用本身，不是插件目录"
+- ❌ 不要一次提超过 3 条
+
+### 提交方式
 
 1. Fork [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)。
-2. 按它仓库说明的格式，把你的条目加进去（一个条目一条）——**不要往 dsh-market 那个市场仓库提条目**，
-   它的 README 明确写了"这个仓库是市场应用本身，不是插件目录"。
-3. 提 PR，说明改了哪个条目。
-4. 通常一天内站点与市场都会收录；市场只会安装这个列表里的来源。
+2. 新建 `data/plugins/oWo1025__dsh-prompt-input.yml`，内容照上面。
+3. 提 PR，标题就叫 `Add dsh-prompt-input`，正文写一句它做什么 + 明确说明是 fork。
+4. 合并后站点与市场会自动重新生成并收录（通常一天内）。
 
-## 五、给上游提 PR
+## 四、给上游提 PR
 
 上游仓库：<https://github.com/cm860712ch-cloud/dsh-quick-input>（默认内容与我们仓库根目录的
 `upstream-0.1.0` 标签一致）。
@@ -125,7 +151,7 @@ PR 描述里写三件事：**问题**（固定槽位 + 量宿主 DOM 违反插�
 **做法**（迁到 `shell.overlay`、去掉 DOM 探测）、**验证**（刷新后的截图 + `node --check`）。
 不要夹带改名、版本号、README 重写——那些属于你自己的发行版。
 
-## 六、发布到 npm（可选）
+## 五、发布到 npm（可选）
 
 ```bash
 npx tsc -v                 # 本项目无构建步骤，纯 JS

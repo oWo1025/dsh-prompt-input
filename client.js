@@ -1,5 +1,5 @@
 /**
- * 快捷输入 —— 浏览器半区。
+ * Prompt 面板（dsh-prompt-input）—— 浏览器半区。
  *
  * 这段代码不是被 import 的，而是被 DSH 的客户端模块加载器当成脚本文本取走、
  * 在页面里执行。约定：
@@ -9,9 +9,9 @@
  *   4. factory 只负责返回插件对象，副作用放在 apply 里
  *
  * 它做三件事：
- *   - 在输入框工具行最左边画一个 ⊞（槽位 conversation.input.left）
- *   - 点开后，在输入框左上角浮出 3×3 九宫格（槽位 conversation.input.overlay）
- *   - 点某一格 → 把该格文字插到草稿的「光标处」（官方 inputActions.insertText）
+ *   - 在输入框工具行最左边画一个叠卡图标（槽位 conversation.input.left）
+ *   - 点开后在它右侧浮出气泡：搜索框 + 卡片 + 页签 + 编辑态（槽位 shell.overlay）
+ *   - 点某张卡 → 把该卡文字插到草稿的「光标处」（官方 inputActions.insertText）
  *
  * 不碰 document.body、不读别的插件的 DOM、不 require 任何 @deepseek-ai/* 包。
  */
@@ -29,7 +29,7 @@ window.__ModuleLoader__.load({
     const API = '/quick-input'
 
     /** 客户端构建号：页面加载时回报给宿主，`GET /quick-input/health` 里能看到跑的是哪一份。 */
-    const CLIENT_BUILD = '0.3.3+build1'
+    const CLIENT_BUILD = '0.3.4+build1'
 
     /** 文案命名空间：注册槽位时带上它，槽位就会把 `t` 交给组件。 */
     const NS = 'quick-input'
@@ -41,10 +41,10 @@ window.__ModuleLoader__.load({
      */
     const DICT = {
       zh: {
-        toggleShow: '展开快捷输入（常驻在输入框左边）',
-        toggleHide: '收起快捷输入',
-        toggleAria: '快捷输入',
-        panelAria: '快捷输入九宫格',
+        toggleShow: '展开 Prompt 面板',
+        toggleHide: '收起 Prompt 面板',
+        toggleAria: 'Prompt 面板',
+        panelAria: 'Prompt 面板',
         prevPage: '上一页',
         nextPage: '下一页',
         addPage: '新增一页',
@@ -52,7 +52,7 @@ window.__ModuleLoader__.load({
         editPresets: '编辑预设',
         finishEdit: '完成编辑',
         done: '完成',
-        collapse: '收起（也可点 ⊞）',
+        collapse: '收起（也可点图标）',
         pageName: '页名',
         deletePage: '删页',
         deletePageHint: '至少要保留一页',
@@ -106,10 +106,10 @@ window.__ModuleLoader__.load({
         moveFailed: '这次移动会丢内容，已取消',
       },
       en: {
-        toggleShow: 'Show quick input (docked left of the composer)',
-        toggleHide: 'Hide quick input',
-        toggleAria: 'Quick input',
-        panelAria: 'Quick input grid',
+        toggleShow: 'Show the prompt pad',
+        toggleHide: 'Hide the prompt pad',
+        toggleAria: 'Prompt pad',
+        panelAria: 'Prompt pad',
         prevPage: 'Previous page',
         nextPage: 'Next page',
         addPage: 'Add a page',
@@ -117,7 +117,7 @@ window.__ModuleLoader__.load({
         editPresets: 'Edit presets',
         finishEdit: 'Finish editing',
         done: 'Done',
-        collapse: 'Hide (or click ⊞)',
+        collapse: 'Hide (or click the icon)',
         pageName: 'Page name',
         deletePage: 'Delete',
         deletePageHint: 'Keep at least one page',
@@ -206,7 +206,7 @@ window.__ModuleLoader__.load({
     const MAX_CELL_TEXT = 2000
 
     /**
-     * 气泡是「锚在 ⊞ 旁边的浮层」，不再和输入框卡片等高：
+     * 气泡是「锚在图标旁边的浮层」，不再和输入框卡片等高：
      * 宽度固定（窄窗口钳到视口内），高度上限固定，内容多了自己滚。
      */
     const PANEL_WIDTH = 420
@@ -425,7 +425,7 @@ window.__ModuleLoader__.load({
     // ------------------------------------------------------------ 跨槽位桥
 
     /**
-     * ⊞ 挂在 `conversation.input.left`（会话作用域），拿得到 sessionId / inputActions；
+     * 开关挂在 `conversation.input.left`（会话作用域），拿得到 sessionId / inputActions；
      * 气泡挂在 `shell.overlay`（root 作用域），这些 props 都拿不到。
      * 两个半区同属一个包、同一个客户端模块，所以用这份模块级桥接传递。
      */
@@ -433,7 +433,7 @@ window.__ModuleLoader__.load({
       sessionId: null,
       inputActions: null,
       phase: undefined,
-      /** ⊞ 按钮节点：气泡靠它定位。 */
+      /** 开关按钮节点：气泡靠它定位。 */
       node: null,
     }
 
@@ -663,7 +663,7 @@ window.__ModuleLoader__.load({
     // ------------------------------------------------------------ 气泡定位
 
     /**
-     * 气泡位置：默认贴在 ⊞ 右边；右边放不下翻到左边；上下取空间大的一侧。
+     * 气泡位置：默认贴在图标右边；右边放不下翻到左边；上下取空间大的一侧。
      * 用 fixed 定位——气泡在 shell.overlay 这一层，不受 composer 卡片裁剪。
      * 拖动过就叠加位移（dy 为正＝向下），并钳在视口内。
      */
@@ -800,7 +800,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    // ------------------------------------------------------------ ⊞ 开关
+    // ------------------------------------------------------------ 入口开关
 
     function QuickToggle(props) {
       useStore()
@@ -1067,7 +1067,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    // ------------------------------------------------------------ 九宫格面板
+    // ------------------------------------------------------------ 气泡面板
 
     function QuickPanel(props) {
       useStore()
@@ -1094,7 +1094,7 @@ window.__ModuleLoader__.load({
         current.hide = 0
       }, [open])
 
-      // 打开时量锚点；窗口变了、或者草稿长高把 ⊞ 顶走了，跟着重量。
+      // 打开时量锚点；窗口变了、或者草稿长高把图标顶走了，跟着重量。
       React.useEffect(() => {
         if (!open) return undefined
         const measure = () => {
@@ -1121,7 +1121,7 @@ window.__ModuleLoader__.load({
           window.addEventListener('resize', measure)
           disposers.push(() => window.removeEventListener('resize', measure))
         }
-        // ⊞ 会被宿主布局改动（侧栏开合、草稿长高）挪走，低频跟一下就够了。
+        // 图标会被宿主布局改动（侧栏开合、草稿长高）挪走，低频跟一下就够了。
         const timer = setInterval(measure, 500)
         disposers.push(() => clearInterval(timer))
         return () => {
@@ -1181,7 +1181,7 @@ window.__ModuleLoader__.load({
         else if (right > node.scrollLeft + node.clientWidth) node.scrollLeft = right - node.clientWidth + 6
       }, [open, sessionId, store.page.get(sessionId), store.recentView.get(sessionId), store.doc.pages.length])
 
-      // 点面板外关闭：面板外 + ⊞ 外才算外（和 DSH 菜单的判定一致）。
+      // 点面板外关闭：面板外 + 图标外才算外（和 DSH 菜单的判定一致）。
       React.useEffect(() => {
         if (!open) return undefined
         const onDown = (event) => {
