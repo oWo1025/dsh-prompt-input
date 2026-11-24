@@ -5,7 +5,20 @@
 DSH（DeepSeek Harness）的 Web 输入框插件：把常用的 prompt、话术、指令沉淀成**可见的卡片**，
 点叠卡图标打开气泡、点一张卡、文字落进草稿的光标处——不打断输入，不切窗口，不用再翻笔记。
 
-![界面](docs/panel.png)
+![主面板](docs/01-main.png)
+
+<details>
+<summary>更多界面：搜索、单格编辑器、编辑态、空页</summary>
+
+| 搜索 | 单格编辑器 |
+|---|---|
+| ![搜索](docs/03-search.png) | ![编辑器](docs/02-edit-cell.png) |
+
+| 编辑态（拖动排序） | 空页 |
+|---|---|
+| ![编辑态](docs/04-edit-grid.png) | ![空页](docs/05-empty-page.png) |
+
+</details>
 
 ---
 

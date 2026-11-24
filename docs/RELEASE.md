@@ -57,7 +57,11 @@
   "install": "dsh plugin --profile web add github:oWo1025/dsh-prompt-input",
   "icon": "https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/icon.svg",
   "screenshots": [
-    "https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/docs/panel.png"
+    "https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/docs/01-main.png",
+    "https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/docs/03-search.png",
+    "https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/docs/04-edit-grid.png",
+    "https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/docs/02-edit-cell.png",
+    "https://raw.githubusercontent.com/oWo1025/dsh-prompt-input/main/docs/05-empty-page.png"
   ]
 }
 ```
