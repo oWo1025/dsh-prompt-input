@@ -29,7 +29,7 @@ window.__ModuleLoader__.load({
     const API = '/quick-input'
 
     /** 客户端构建号：页面加载时回报给宿主，`GET /quick-input/health` 里能看到跑的是哪一份。 */
-    const CLIENT_BUILD = '0.2.7+build1'
+    const CLIENT_BUILD = '0.2.8+build1'
 
     /** 文案命名空间：注册槽位时带上它，槽位就会把 `t` 交给组件。 */
     const NS = 'quick-input'
@@ -87,7 +87,7 @@ window.__ModuleLoader__.load({
         searchPlaceholder: '搜索 Prompt…',
         noResults: '没有匹配「{q}」',
         searchCount: '{n} 条结果 · ↑↓ 选择 · Enter 插入',
-        editCellShort: '✎ 点击可编辑',
+        editCellShort: '点击可编辑',
         previewMeta: '{page} · {n} 字',
         previewHint: '点击插入 · 拖动标题栏可移动位置',
         shortcutToggle: '打开 / 收起快捷输入',
@@ -100,6 +100,7 @@ window.__ModuleLoader__.load({
         tabsPrev: '向前翻页签',
         tabsNext: '向后翻页签',
         emptyPageTitle: '这一页还空着',
+        editBarHint: '编辑中 · 拖动卡片调整顺序',
         emptyPageHint: '点底部的铅笔按钮添加第一条',
         recentHint: '最近点过的 prompt（自动保留 8 条，不可编辑）',
         moveFailed: '这次移动会丢内容，已取消',
@@ -151,7 +152,7 @@ window.__ModuleLoader__.load({
         searchPlaceholder: 'Search prompts…',
         noResults: 'Nothing matches "{q}"',
         searchCount: '{n} results · ↑↓ to move · Enter to insert',
-        editCellShort: '✎ click to edit',
+        editCellShort: 'click to edit',
         previewMeta: '{page} · {n} chars',
         previewHint: 'Click to insert · drag the header to move',
         shortcutToggle: 'Toggle quick input',
@@ -164,6 +165,7 @@ window.__ModuleLoader__.load({
         tabsPrev: 'Scroll tabs left',
         tabsNext: 'Scroll tabs right',
         emptyPageTitle: 'This page is empty',
+        editBarHint: 'Editing · drag cards to reorder',
         emptyPageHint: 'Click the pencil button at the bottom to add one',
         recentHint: 'Recently inserted prompts (last 8, read-only)',
         moveFailed: 'That move would lose a cell — cancelled',
@@ -229,6 +231,10 @@ window.__ModuleLoader__.load({
 .dsq-search{box-sizing:border-box;width:100%;height:30px;padding:0 10px 0 28px;border:1px solid transparent;border-radius:var(--dsw-radius-md,10px);background:var(--dsw-alias-bg-module-platform,rgba(127,127,127,.07));color:inherit;font-family:inherit;font-size:12px;line-height:16px;outline:none;transition:border-color .12s ease,background-color .12s ease}
 .dsq-search::placeholder{color:var(--dsw-alias-label-secondary,#667085);opacity:.9}
 .dsq-search:focus{border-color:var(--dsw-alias-border-selected,var(--dsw-alias-brand-primary,#4d6bfe));background:var(--dsw-alias-bg-layer-2,#fff);box-shadow:0 0 0 3px color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 14%,transparent)}
+/* 编辑态：搜索框让位给状态说明条 */
+.dsq-editbar{flex:1;min-width:0;display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px dashed color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 42%,transparent);border-radius:var(--dsw-radius-md,10px);background:color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 8%,transparent);color:var(--dsw-alias-label-primary,#1f2328);font-size:12px;line-height:16px}
+.dsq-editbar-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dsq-editbar svg{flex:none;color:var(--dsw-alias-brand-primary,#4d6bfe)}
 .dsq-x{box-sizing:border-box;flex:none;width:26px;height:26px;padding:0;border:0;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary,#667085);font-size:15px;line-height:1;cursor:pointer}
 .dsq-x:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#1f2328)}
 
@@ -1484,7 +1490,7 @@ window.__ModuleLoader__.load({
         ),
         h(
           'div',
-          { className: 'dsq-searchwrap' },
+          { className: 'dsq-searchwrap', style: editMode ? { display: 'none' } : undefined },
           h(
             'svg',
             {
@@ -1536,6 +1542,14 @@ window.__ModuleLoader__.load({
           },
         }),
         ),
+        editMode
+          ? h(
+              'div',
+              { className: 'dsq-editbar', role: 'status' },
+              h(PencilIcon, null),
+              h('span', { className: 'dsq-editbar-text', title: t('editBarHint') }, t('editBarHint')),
+            )
+          : null,
         h(
           'button',
           {
@@ -1860,6 +1874,7 @@ window.__ModuleLoader__.load({
               if (pages.length === 0) return
               store.editing.set(sessionId, null)
               store.editMode.set(sessionId, editMode !== true)
+              if (editMode !== true) writeSearch(sessionId, { query: '', active: 0 })
               store.emit()
             },
           },

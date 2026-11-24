@@ -52,7 +52,7 @@ CARDS9 = [
 def grid(names, edit=False, hover=None):
     cells = []
     for i, name in enumerate(names):
-        sub = '<span class="dsq-card-sub">✎ 点击可编辑</span>' if edit else ''
+        sub = '<span class="dsq-card-sub">点击可编辑</span>' if edit else ''
         cls = "dsq-card dsq-card-hover" if hover == i else "dsq-card"
         cells.append(f'<button class="{cls}"><span class="dsq-card-label">{name}</span>{sub}</button>')
     if edit:
@@ -61,7 +61,7 @@ def grid(names, edit=False, hover=None):
     return '<div class="dsq-grid3" role="group">' + "".join(cells) + "</div>"
 
 
-def popover(title, names, active=0, query="", results=None, overflow=False, empty=False, hover=None):
+def popover(title, names, active=0, query="", results=None, overflow=False, empty=False, hover=None, editing=False):
     if results is not None:
         body = '<div class="dsq-results" role="listbox">' + "".join(
             f'<button class="dsq-item{" dsq-item-on" if i == 0 else ""}">'
@@ -77,7 +77,7 @@ def popover(title, names, active=0, query="", results=None, overflow=False, empt
             "<div>点底部的铅笔按钮添加第一条</div></div>"
         )
     else:
-        body = grid(names, hover=hover)
+        body = grid(names, edit=editing, hover=hover)
 
     tab_names = ["常用", "代码", "问清·学", "解题·决", "指挥①", "指挥②"]
     if overflow:
@@ -86,6 +86,20 @@ def popover(title, names, active=0, query="", results=None, overflow=False, empt
         f'<button class="dsq-tab{" dsq-tab-on" if i == active else ""}">{t}</button>'
         for i, t in enumerate(tab_names)
     )
+    if editing:
+        search_html = (
+            '<div class="dsq-editbar" role="status">'
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+            '<path d="M4 20h4L18.5 9.5a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg>'
+            '<span class="dsq-editbar-text">编辑中 · 拖动卡片调整顺序</span></div>'
+        )
+    else:
+        search_html = (
+            '<div class="dsq-searchwrap">'
+            '<svg class="dsq-searchicon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>'
+            f'<input class="dsq-search" type="search" value="{query}" placeholder="搜索 Prompt…">'
+            "</div>"
+        )
     tabs_cls = "dsq-tabs dsq-tabs-scroll" if overflow else "dsq-tabs"
     arrow_l = '<button class="dsq-mini">‹</button>' if overflow else ""
     arrow_r = '<button class="dsq-mini">›</button>' if overflow else ""
@@ -105,10 +119,7 @@ def popover(title, names, active=0, query="", results=None, overflow=False, empt
           <div class="dsq-grip" title="拖动这里移动面板（双击复位）" aria-hidden="true">
             <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="2" cy="2" r="1.5"/><circle cx="7" cy="2" r="1.5"/><circle cx="2" cy="7" r="1.5"/><circle cx="7" cy="7" r="1.5"/><circle cx="2" cy="12" r="1.5"/><circle cx="7" cy="12" r="1.5"/></svg>
           </div>
-          <div class="dsq-searchwrap">
-            <svg class="dsq-searchicon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-            <input class="dsq-search" type="search" value="{query}" placeholder="搜索 Prompt…">
-          </div>
+          {search_html}
           <button class="dsq-x"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <div class="dsq-body">{body}</div>
@@ -164,6 +175,7 @@ html = f"""<!DOCTYPE html>
 {popover("C · 搜索态", [], active=0, query="苏格拉底", results=RESULTS)}
 {popover("D · 8 个页签（溢出，左右翻页 + 两端渐隐）", CARDS9, active=2, overflow=True)}
 {popover("E · 空页", [], empty=True)}
+{popover("F · 编辑态（标题行换成说明条）", CARDS9, active=0, editing=True)}
 </div>
 <div class="dsq-preview" style="left:640px;top:545px;width:300px">
   <div class="dsq-preview-title">苏格拉底问诊</div>
