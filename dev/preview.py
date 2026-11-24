@@ -35,12 +35,12 @@ TOKENS = """
   --dsw-elevation-panel:0 12px 32px rgba(16,24,40,.14), 0 2px 6px rgba(16,24,40,.06);
 }
 body{margin:0;background:#f7f8fa;font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:#1f2328}
-.stage{display:flex;flex-wrap:wrap;gap:40px;padding:40px;align-items:flex-end;min-height:100vh;box-sizing:border-box}
-.slot{position:relative;width:440px}
+.stage{display:flex;flex-wrap:wrap;gap:32px;padding:28px;align-items:flex-start;box-sizing:border-box}
+.slot{position:relative;width:440px;display:flex;flex-direction:column;gap:10px}
 .host{height:98px;border:1px solid rgba(0,0,0,.08);border-radius:16px;background:#fff;display:flex;align-items:flex-end;padding:10px;gap:8px;color:#98a2b3;font-size:12px}
 .host .fake-btn{width:28px;height:28px;border-radius:999px;background:#f2f4f7;display:grid;place-items:center;color:#667085}
-.dsq-pop{position:absolute !important;left:8px;bottom:110px;width:420px}
-.caption{position:absolute;top:-26px;left:0;font-size:12px;color:#98a2b3}
+.dsq-pop{position:static !important;width:420px}
+.caption{font-size:12px;color:#98a2b3;margin:0}
 """
 
 CARDS9 = [
@@ -49,18 +49,19 @@ CARDS9 = [
 ]
 
 
-def grid(names, edit=False):
+def grid(names, edit=False, hover=None):
     cells = []
-    for name in names:
+    for i, name in enumerate(names):
         sub = '<span class="dsq-card-sub">✎ 点击可编辑</span>' if edit else ''
-        cells.append(f'<button class="dsq-card"><span class="dsq-card-label">{name}</span>{sub}</button>')
+        cls = "dsq-card dsq-card-hover" if hover == i else "dsq-card"
+        cells.append(f'<button class="{cls}"><span class="dsq-card-label">{name}</span>{sub}</button>')
     if edit:
         for _ in range(9 - len(names)):
             cells.append('<button class="dsq-card dsq-card-empty">＋</button>')
     return '<div class="dsq-grid3" role="group">' + "".join(cells) + "</div>"
 
 
-def popover(title, names, active=0, query="", results=None, overflow=False, empty=False):
+def popover(title, names, active=0, query="", results=None, overflow=False, empty=False, hover=None):
     if results is not None:
         body = '<div class="dsq-results" role="listbox">' + "".join(
             f'<button class="dsq-item{" dsq-item-on" if i == 0 else ""}">'
@@ -73,10 +74,10 @@ def popover(title, names, active=0, query="", results=None, overflow=False, empt
         body = (
             '<div class="dsq-empty">'
             '<div class="dsq-empty-title">这一页还空着</div>'
-            "<div>点底部的 ✎ 添加第一条</div></div>"
+            "<div>点底部的铅笔按钮添加第一条</div></div>"
         )
     else:
-        body = grid(names)
+        body = grid(names, hover=hover)
 
     tab_names = ["常用", "代码", "问清·学", "解题·决", "指挥①", "指挥②"]
     if overflow:
@@ -92,7 +93,13 @@ def popover(title, names, active=0, query="", results=None, overflow=False, empt
     return f"""
     <div class="slot">
       <div class="caption">{title}</div>
-      <div class="host"><span class="fake-btn">⊞</span><span>输入你的消息…</span></div>
+      <div class="host"><span class="fake-btn">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden="true">
+          <g transform="rotate(-9 9.5 5.2)"><rect x="4.6" y="1.4" width="9.2" height="6.4" rx="1.8" stroke-width="1.3" opacity=".42"/></g>
+          <rect x="1.7" y="6.4" width="9.5" height="6.6" rx="1.9" stroke-width="1.3"/>
+          <path d="M4 9.2h4.4M4 11.3h2.8" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+      </span><span>输入你的消息…</span></div>
       <div class="dsq-pop" role="dialog">
         <div class="dsq-head">
           <div class="dsq-grip" title="拖动这里移动面板（双击复位）" aria-hidden="true">
@@ -102,7 +109,7 @@ def popover(title, names, active=0, query="", results=None, overflow=False, empt
             <svg class="dsq-searchicon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
             <input class="dsq-search" type="search" value="{query}" placeholder="搜索 Prompt…">
           </div>
-          <button class="dsq-x">×</button>
+          <button class="dsq-x"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <div class="dsq-body">{body}</div>
         <div class="dsq-tabsrow">
@@ -110,7 +117,7 @@ def popover(title, names, active=0, query="", results=None, overflow=False, empt
           <div class="{tabs_cls}" role="tablist">{tabs}</div>
           {arrow_r}
           <span class="dsq-count">{active + 1}/{total}</span>
-          <button class="dsq-mini">✎</button>
+          <button class="dsq-mini"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L18.5 9.5a2.8 2.8 0 0 0-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg></button>
         </div>
       </div>
     </div>"""
@@ -148,9 +155,11 @@ html = f"""<!DOCTYPE html>
 <style>{TOKENS}
 {css}
 #measure{{position:fixed;right:8px;bottom:8px;z-index:99;background:#111;color:#fff;font:11px/1.5 monospace;padding:8px;border-radius:8px;white-space:pre}}
+/* 预览专用：复刻 .dsq-card:hover 的三条声明，用来验证上移和阴影不会被裁 */
+.dsq-card-hover{{transform:translateY(-1px);border-color:color-mix(in srgb,#4d6bfe 24%,rgba(0,0,0,.16));box-shadow:0 6px 16px -10px color-mix(in srgb,#4d6bfe 55%,transparent)}}
 </style></head>
 <body><div class="stage">
-{popover("A · 9 格页（内容满）", CARDS9, active=0)}
+{popover("A · 9 格页（第一行第 1 张模拟悬停）", CARDS9, active=0, hover=0)}
 {popover("B · 2 格页（内容少，应与 A 等高）", ["继续", "先给结论"], active=1)}
 {popover("C · 搜索态", [], active=0, query="苏格拉底", results=RESULTS)}
 {popover("D · 8 个页签（溢出，左右翻页 + 两端渐隐）", CARDS9, active=2, overflow=True)}

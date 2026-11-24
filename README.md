@@ -3,7 +3,7 @@
 > 输入框旁边的一格一格 prompt。点一下就插到光标处。
 
 DSH（DeepSeek Harness）的 Web 输入框插件：把常用的 prompt、话术、指令沉淀成**可见的卡片**，
-点 ⊞ 打开气泡、点一张卡、文字落进草稿的光标处——不打断输入，不切窗口，不用再翻笔记。
+点叠卡图标打开气泡、点一张卡、文字落进草稿的光标处——不打断输入，不切窗口，不用再翻笔记。
 
 ![界面](docs/panel.png)
 
@@ -46,7 +46,7 @@ DSH 左侧栏 → **插件** → **添加插件** → 填入这个目录的绝�
 E:\dsh\quick-input-dev      ← 本仓库就是这个目录
 ```
 
-装好后输入框工具行最左边出现 **⊞**。
+装好后输入框工具行最左边出现**叠卡图标**（两张叠起的卡片）。
 
 > 安装后 profile 里是一条 `link:` 依赖（Windows 上是目录联接），所以：
 > **改 `client.js` → 刷新页面即生效**；改 `index.js`（宿主半区）→ **需要重启 DSH**。
@@ -57,9 +57,9 @@ E:\dsh\quick-input-dev      ← 本仓库就是这个目录
 
 | 动作 | 结果 |
 |---|---|
-| 点 ⊞ | 在它右侧弹出气泡（右边放不下就翻到左边） |
-| 再点 ⊞ / 点气泡里的 `×` | 收起 |
-| 点气泡外面 | 收起（点 ⊞ 自己不算"外面"） |
+| 点叠卡图标 | 在它右侧弹出气泡（右边放不下就翻到左边） |
+| 再点一次图标 / 点气泡里的 `×` | 收起 |
+| 点气泡外面 | 收起（点图标自己不算"外面"） |
 | `Ctrl+Shift+K` | 开 / 收（mac 是 `Cmd+Shift+K`；Web 端默认 `Mod+Alt+K`，可在 DSH 快捷键设置里改） |
 | 刷新页面 | 一定从收起状态开始（气泡语义，不会自己冒出来） |
 
@@ -90,7 +90,7 @@ E:\dsh\quick-input-dev      ← 本仓库就是这个目录
 
 ### 整理（编辑态）
 
-点底部的 `✎` 进入编辑态：
+点底部的铅笔按钮进入编辑态：
 
 | 动作 | 结果 |
 |---|---|
@@ -195,7 +195,7 @@ git reset --hard origin/main     # 恢复成远端最新
 
 ### English
 
-A quick-phrase pad for the DSH (DeepSeek Harness) composer: click **⊞** next to the input box,
+A quick-phrase pad for the DSH (DeepSeek Harness) composer: click the **stack icon** next to the input box,
 search or pick a card, and its text is inserted at the caret as one undoable edit.
 Includes hover previews, a read-only "recent" page, drag-to-move with remembered position,
 and edit-mode reordering with cross-page moves. Presets live in

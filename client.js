@@ -29,7 +29,7 @@ window.__ModuleLoader__.load({
     const API = '/quick-input'
 
     /** 客户端构建号：页面加载时回报给宿主，`GET /quick-input/health` 里能看到跑的是哪一份。 */
-    const CLIENT_BUILD = '0.2.5+build1'
+    const CLIENT_BUILD = '0.2.7+build1'
 
     /** 文案命名空间：注册槽位时带上它，槽位就会把 `t` 交给组件。 */
     const NS = 'quick-input'
@@ -100,7 +100,7 @@ window.__ModuleLoader__.load({
         tabsPrev: '向前翻页签',
         tabsNext: '向后翻页签',
         emptyPageTitle: '这一页还空着',
-        emptyPageHint: '点底部的 ✎ 添加第一条',
+        emptyPageHint: '点底部的铅笔按钮添加第一条',
         recentHint: '最近点过的 prompt（自动保留 8 条，不可编辑）',
         moveFailed: '这次移动会丢内容，已取消',
       },
@@ -164,7 +164,7 @@ window.__ModuleLoader__.load({
         tabsPrev: 'Scroll tabs left',
         tabsNext: 'Scroll tabs right',
         emptyPageTitle: 'This page is empty',
-        emptyPageHint: 'Click ✎ at the bottom to add one',
+        emptyPageHint: 'Click the pencil button at the bottom to add one',
         recentHint: 'Recently inserted prompts (last 8, read-only)',
         moveFailed: 'That move would lose a cell — cancelled',
       },
@@ -233,9 +233,9 @@ window.__ModuleLoader__.load({
 .dsq-x:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#1f2328)}
 
 /* 内容区：普通态定高 3 行（换页高度不变），编辑态才自适应并可滚 */
-.dsq-body{flex:0 0 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.dsq-body{flex:0 0 auto;min-height:0;display:flex;flex-direction:column;overflow:visible}
 .dsq-body-auto{flex:1 1 auto;min-height:120px;overflow-y:auto;scrollbar-width:thin}
-.dsq-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:52px;gap:6px;height:168px;overflow-y:auto;padding-right:2px;scrollbar-width:thin}
+.dsq-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:52px;gap:6px;height:168px;overflow:visible}
 .dsq-card{box-sizing:border-box;display:flex;flex-direction:column;gap:1px;align-items:flex-start;justify-content:flex-start;padding:7px 8px;border:1px solid var(--dsw-alias-border-l1,rgba(0,0,0,.08));border-radius:var(--dsw-radius-md,10px);background:transparent;color:inherit;font-family:inherit;font-size:12px;line-height:16px;text-align:left;cursor:pointer;overflow:hidden;transition:background-color .12s ease,border-color .12s ease,box-shadow .16s ease,transform .12s ease}
 .dsq-card:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.1));border-color:color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 24%,var(--dsw-alias-border-l2,rgba(0,0,0,.16)));box-shadow:0 6px 16px -10px color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 55%,transparent);transform:translateY(-1px)}
 .dsq-card:active{transform:translateY(0) scale(.99);box-shadow:none}
@@ -265,6 +265,7 @@ window.__ModuleLoader__.load({
 .dsq-mini{box-sizing:border-box;flex:none;height:24px;min-width:24px;padding:0 7px;border:0;border-radius:var(--dsw-radius-sm,8px);background:transparent;color:var(--dsw-alias-label-secondary,#667085);font-family:inherit;font-size:12px;line-height:1;cursor:pointer}
 .dsq-mini:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#1f2328)}
 .dsq-mini:disabled{opacity:.45;cursor:default}
+.dsq-mini-on{background:color-mix(in srgb,var(--dsw-alias-brand-primary,#4d6bfe) 14%,transparent);color:var(--dsw-alias-brand-primary,#4d6bfe)}
 
 /* 编辑态 */
 .dsq-row{display:flex;align-items:center;gap:6px}
@@ -705,27 +706,88 @@ window.__ModuleLoader__.load({
 
     // ------------------------------------------------------------ 图标
 
-    /** 3×3 圆点：一眼就是「九宫格」。 */
+    /** 入口图标：两张叠起来的卡片 + 两行字，比九点阵更像「一叠 prompt 卡」。 */
     function GridIcon() {
-      const dots = []
-      for (let row = 0; row < 3; row++) {
-        for (let column = 0; column < 3; column++) {
-          dots.push(
-            h('rect', {
-              key: `${row}-${column}`,
-              x: 0.6 + column * 5.5,
-              y: 0.6 + row * 5.5,
-              width: 4,
-              height: 4,
-              rx: 1.2,
-            }),
-          )
-        }
-      }
       return h(
         'svg',
-        { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'currentColor', 'aria-hidden': 'true' },
-        dots,
+        { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', 'aria-hidden': 'true' },
+        // 后面那张微微歪着：两卡等大会被读成"复制"，歪一点才是"一叠"。
+        h(
+          'g',
+          { transform: 'rotate(-9 9.5 5.2)' },
+          h('rect', {
+            x: 4.6,
+            y: 1.4,
+            width: 9.2,
+            height: 6.4,
+            rx: 1.8,
+            strokeWidth: 1.3,
+            opacity: 0.42,
+          }),
+        ),
+        h('rect', { x: 1.7, y: 6.4, width: 9.5, height: 6.6, rx: 1.9, strokeWidth: 1.3 }),
+        h('path', {
+          d: 'M4 9.2h4.4M4 11.3h2.8',
+          strokeWidth: 1.2,
+          strokeLinecap: 'round',
+        }),
+      )
+    }
+
+    /** 编辑：铅笔（描边风格，和其余图标统一 1.8 描边、14px 尺寸）。 */
+    function PencilIcon() {
+      return h(
+        'svg',
+        {
+          width: 14,
+          height: 14,
+          viewBox: '0 0 24 24',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 1.8,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          'aria-hidden': 'true',
+        },
+        h('path', { d: 'M4 20h4L18.5 9.5a2.8 2.8 0 0 0-4-4L4 16v4z' }),
+        h('path', { d: 'M13.5 6.5l4 4' }),
+      )
+    }
+
+    /** 编辑完成。 */
+    function CheckIcon() {
+      return h(
+        'svg',
+        {
+          width: 14,
+          height: 14,
+          viewBox: '0 0 24 24',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 2,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          'aria-hidden': 'true',
+        },
+        h('path', { d: 'M20 6L9 17l-5-5' }),
+      )
+    }
+
+    /** 关闭。 */
+    function CloseIcon() {
+      return h(
+        'svg',
+        {
+          width: 13,
+          height: 13,
+          viewBox: '0 0 24 24',
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 1.9,
+          strokeLinecap: 'round',
+          'aria-hidden': 'true',
+        },
+        h('path', { d: 'M6 6l12 12M18 6L6 18' }),
       )
     }
 
@@ -1484,7 +1546,7 @@ window.__ModuleLoader__.load({
             onMouseDown: keepFocus,
             onClick: () => closePanel(sessionId),
           },
-          '×',
+          h(CloseIcon, null),
         ),
       )
 
@@ -1791,7 +1853,7 @@ window.__ModuleLoader__.load({
           'button',
           {
             type: 'button',
-            className: 'dsq-mini',
+            className: editMode ? 'dsq-mini dsq-mini-on' : 'dsq-mini',
             title: editMode ? t('finishEdit') : t('editPresets'),
             onMouseDown: keepFocus,
             onClick: () => {
@@ -1801,7 +1863,7 @@ window.__ModuleLoader__.load({
               store.emit()
             },
           },
-          editMode ? t('done') : '✎',
+          editMode ? h(CheckIcon, null) : h(PencilIcon, null),
         ),
       )
 

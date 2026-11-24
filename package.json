@@ -1,7 +1,7 @@
 {
   "name": "dsh-quick-input",
-  "version": "0.2.5",
-  "description": "快捷输入：点开输入框左侧的 ⊞，从气泡里搜索/点选预设短语并插到光标处。Popover quick-phrase pad with search: open from ⊞ beside the composer, click a card to insert at the caret.",
+  "version": "0.2.7",
+  "description": "快捷输入：点开输入框左侧的叠卡图标，从气泡里搜索/点选预设短语并插到光标处。Popover quick-phrase pad with search: open from ⊞ beside the composer, click a card to insert at the caret.",
   "type": "module",
   "license": "MIT",
   "author": "cm860712ch-cloud",

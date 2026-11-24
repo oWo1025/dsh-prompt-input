@@ -1,13 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-label="快捷输入">
-  <g fill="#4d6bfe">
-    <rect x="2.6" y="2.6" width="5.4" height="5.4" rx="1.7"/>
-    <rect x="9.3" y="2.6" width="5.4" height="5.4" rx="1.7"/>
-    <rect x="16" y="2.6" width="5.4" height="5.4" rx="1.7"/>
-    <rect x="2.6" y="9.3" width="5.4" height="5.4" rx="1.7"/>
-    <rect x="16" y="9.3" width="5.4" height="5.4" rx="1.7"/>
-    <rect x="2.6" y="16" width="5.4" height="5.4" rx="1.7"/>
-    <rect x="9.3" y="16" width="5.4" height="5.4" rx="1.7"/>
-    <rect x="16" y="16" width="5.4" height="5.4" rx="1.7"/>
+  <g fill="none" stroke="#4d6bfe" stroke-linejoin="round">
+    <g transform="rotate(-9 14.25 7.8)">
+      <rect x="6.9" y="2.1" width="13.8" height="9.6" rx="2.7" stroke-width="1.95" opacity="0.42"/>
+    </g>
+    <rect x="2.55" y="9.6" width="14.25" height="9.9" rx="2.85" stroke-width="1.95"/>
+    <path d="M6 13.8h6.6M6 16.95h4.2" stroke-width="1.8" stroke-linecap="round"/>
   </g>
-  <rect x="9.3" y="9.3" width="5.4" height="5.4" rx="1.7" fill="#4d6bfe" opacity="0.45"/>
 </svg>
