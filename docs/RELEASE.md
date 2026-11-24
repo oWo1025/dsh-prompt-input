@@ -45,6 +45,8 @@
 
 > **两个 README 由脚本生成，请勿手工编辑。** 列表数据在 `data/plugins/`，一个插件一个 YAML 文件。
 
+> 可直接复制仓库里的 docs/market-entry.yml（内容与下面一致，已用 js-yaml 验证可解析）。
+
 ### 要提交的文件
 
 路径：`data/plugins/<owner>__<repo>.yml` → 我们的是 **`data/plugins/oWo1025__dsh-prompt-input.yml`**
