@@ -26,8 +26,9 @@ TOKENS = """
   --dsw-alias-label-caption:#98a2b3;
   --dsw-alias-border-l1:rgba(0,0,0,.06);
   --dsw-alias-border-l2:rgba(0,0,0,.12);
-  --dsw-alias-border-selected:#4d6bfe;
-  --dsw-alias-brand-primary:#4d6bfe;
+  --dsw-alias-border-selected:#9aa3b2;
+  --dsw-alias-brand-primary:#1a1d21;          /* 浅色主题下这是近黑 */
+  --dsw-alias-brand-primary-new-color:#4176e6; /* 真正的品牌蓝 */
   --dsw-alias-interactive-bg-hover:rgba(16,24,40,.06);
   --dsw-alias-state-success-primary:#12b76a;
   --dsw-alias-state-error-primary:#d92d20;

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.9 — 强调色改用真实品牌蓝
+
+**问题**：预览图里是高饱和蓝，实际界面却是黑灰。
+
+**原因**：DSH 的 `--dsw-alias-brand-primary` 在浅色主题里是 `neutral-bluish-1000`（**近黑**），
+深色主题里是 `neutral-bluish-50`（**近白**）——它是"墨色"，不是色相。真正的 DeepSeek 蓝是另一个
+token：`--dsw-alias-brand-primary-new-color`（浅色 `#4176e6`，深色 `deepseek-450`）。
+我的静态预览里把前者硬编码成了 `#4d6bfe`，所以预览一直显示蓝的、而真机是灰的。
+
+**改法**：全插件 21 处强调色统一为
+`var(--dsw-alias-brand-primary-new-color, var(--dsw-alias-brand-primary, #4d6bfe))`
+——优先真蓝，token 缺席时退回原生墨色。深色主题自动跟随。
+
+**说明**：DSH 自身 UI 的强调色是近黑，所以这一步是**有意偏离**原生观感，为的是"品牌色"这件事能被看见。
+想回到纯原生墨色，只需把这一处链路换回 `var(--dsw-alias-brand-primary)`。
+
+预览脚本的 token 也改成 DSH 的真实值（`brand-primary:#1a1d21`、`new-color:#4176e6`、
+`border-selected:#9aa3b2`），以后预览不再“骗人”。
+
 ## 0.2.8 — 编辑态状态条
 
 - 进入编辑态后，标题行的搜索框让位给一条**虚线状态条**：铅笔图标 +「编辑中 · 拖动卡片调整顺序」。
