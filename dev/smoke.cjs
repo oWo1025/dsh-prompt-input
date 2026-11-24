@@ -98,8 +98,9 @@ ok('no legacy overlay slot', !slotNames.includes('conversation.input.overlay'))
 ok('both components are functions', registered.every((r) => typeof r.component === 'function'))
 
 // 字典：中英 key 集合必须一致（缺一个就会显示成 key）
-const zh = dicts['quick-input'] && dicts['quick-input'].zh
-const en = dicts['quick-input'] && dicts['quick-input'].en
+const NS_ID = 'dsh-prompt-input'
+const zh = dicts[NS_ID] && dicts[NS_ID].zh
+const en = dicts[NS_ID] && dicts[NS_ID].en
 ok('dict registered', !!zh && !!en)
 if (zh && en) {
   const zk = Object.keys(zh).sort()
@@ -117,7 +118,7 @@ if (zh && en) {
 ok('shortcut registered', shortcuts.length === 1, String(shortcuts.length))
 if (shortcuts.length === 1) {
   const cmd = shortcuts[0]
-  ok('shortcut id', cmd.id === 'quick-input.toggle', cmd.id)
+  ok('shortcut id', cmd.id === NS_ID + '.toggle', cmd.id)
   const win = cmd.defaults && cmd.defaults['desktop:windows']
   ok('shortcut desktop default = Ctrl+Shift+K', !!win && win.code === 'KeyK' && win.modifiers.includes('primary') && win.modifiers.includes('shift'), JSON.stringify(win))
   ok('shortcut has label fn', typeof cmd.label === 'function')

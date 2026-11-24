@@ -26,13 +26,14 @@ window.__ModuleLoader__.load({
 
     const TOGGLE_SLOT = 'conversation.input.left'
     const PANEL_SLOT = 'shell.overlay'
-    const API = '/quick-input'
+    /** 宿主路由基址：0.4 起改名；首个元素是当前名字，第二个是旧名字（宿主未重启时回退）。 */
+    const API_CANDIDATES = ['/dsh-prompt-input', '/quick-input']
 
-    /** 客户端构建号：页面加载时回报给宿主，`GET /quick-input/health` 里能看到跑的是哪一份。 */
-    const CLIENT_BUILD = '0.3.4+build1'
+    /** 客户端构建号：页面加载时回报给宿主，`GET /dsh-prompt-input/health` 里能看到跑的是哪一份。 */
+    const CLIENT_BUILD = '0.4.0+build1'
 
     /** 文案命名空间：注册槽位时带上它，槽位就会把 `t` 交给组件。 */
-    const NS = 'quick-input'
+    const NS = 'dsh-prompt-input'
 
     /**
      * 中英文字典。DSH 的 locale 服务要求一次把两种语言都注册齐；
@@ -451,12 +452,16 @@ window.__ModuleLoader__.load({
     // ------------------------------------------------------------ 最近使用
 
     /** 点过的 prompt 置顶，最多 8 条，按正文去重（同一条不会重复占位）。 */
-    const RECENT_KEY = 'quick-input.recent.v1'
+    const RECENT_KEY = 'dsh-prompt-input.recent.v1'
+    /** 0.3 及以前的键名，读时兜底、写时不再用它。 */
+    const LEGACY_RECENT_KEY = 'quick-input.recent.v1'
     const RECENT_MAX = 8
 
     function readRecent() {
       try {
-        const raw = window.localStorage ? window.localStorage.getItem(RECENT_KEY) : null
+        const raw = window.localStorage
+          ? window.localStorage.getItem(RECENT_KEY) ?? window.localStorage.getItem(LEGACY_RECENT_KEY)
+          : null
         if (!raw) return []
         const list = JSON.parse(raw)
         if (!Array.isArray(list)) return []
@@ -545,8 +550,29 @@ window.__ModuleLoader__.load({
 
     // ------------------------------------------------------------ 与宿主通信
 
+    /** 当前生效的路由基址；首次请求失败会自动切到旧名字。 */
+    let apiBase = API_CANDIDATES[0]
+
     async function request(path, options) {
-      const response = await fetch(`${API}${path}`, options)
+      let response
+      try {
+        response = await fetch(`${apiBase}${path}`, options)
+      } catch (error) {
+        if (apiBase !== API_CANDIDATES[1]) {
+          apiBase = API_CANDIDATES[1]
+          response = await fetch(`${apiBase}${path}`, options)
+        } else {
+          throw error
+        }
+      }
+      // 宿主还没重启时新路由是 404，退回旧路由（旧版宿主仍只认它）。
+      if (response.status === 404 && apiBase === API_CANDIDATES[0]) {
+        const retry = await fetch(`${API_CANDIDATES[1]}${path}`, options)
+        if (retry.ok) {
+          apiBase = API_CANDIDATES[1]
+          response = retry
+        }
+      }
       let body = null
       try {
         body = await response.json()
@@ -627,7 +653,9 @@ window.__ModuleLoader__.load({
     // ------------------------------------------------------------ 位置记忆
 
     /** 拖拽位移（相对锚点）按窗口宽度分档存，换分辨率不会飘到屏幕外。 */
-    const POS_KEY = 'quick-input.pos.v1'
+    const POS_KEY = 'dsh-prompt-input.pos.v1'
+    /** 0.3 及以前的键名，读时兜底。 */
+    const LEGACY_POS_KEY = 'quick-input.pos.v1'
 
     function widthBucket() {
       const width = window.innerWidth || 1280
@@ -636,7 +664,9 @@ window.__ModuleLoader__.load({
 
     function loadPos() {
       try {
-        const raw = window.localStorage ? window.localStorage.getItem(POS_KEY) : null
+        const raw = window.localStorage
+          ? window.localStorage.getItem(POS_KEY) ?? window.localStorage.getItem(LEGACY_POS_KEY)
+          : null
         if (!raw) return null
         const all = JSON.parse(raw) || {}
         const value = all[widthBucket()]
@@ -650,7 +680,8 @@ window.__ModuleLoader__.load({
     function savePos(value) {
       try {
         if (!window.localStorage) return
-        const raw = window.localStorage.getItem(POS_KEY)
+        const raw =
+          window.localStorage.getItem(POS_KEY) ?? window.localStorage.getItem(LEGACY_POS_KEY)
         const all = raw ? JSON.parse(raw) || {} : {}
         if (value === null) delete all[widthBucket()]
         else all[widthBucket()] = { dx: Math.round(value.dx), dy: Math.round(value.dy) }
@@ -853,7 +884,7 @@ window.__ModuleLoader__.load({
 
     // ------------------------------------------------------------ 单格编辑器
 
-    /** 编辑一格：名称 + 内容；保存走 POST /quick-input/presets。 */
+    /** 编辑一格：名称 + 内容；保存走 POST /dsh-prompt-input/presets。 */
     function CellEditor(props) {
       const t = translator(props)
       const sessionId = props.sessionId
@@ -1941,7 +1972,7 @@ window.__ModuleLoader__.load({
       }
       componentDidCatch(error) {
         try {
-          console.error('[quick-input] 界面渲染失败：', error)
+          console.error('[dsh-prompt-input] 界面渲染失败：', error)
         } catch {
           /* 忽略 */
         }
@@ -1961,14 +1992,14 @@ window.__ModuleLoader__.load({
 
     // ------------------------------------------------------------ 插件对象
 
-    /** 向宿主报到：这样 `GET /quick-input/health` 能证明页面正在跑哪一份客户端代码。 */
+    /** 向宿主报到：这样 `GET /dsh-prompt-input/health` 能证明页面正在跑哪一份客户端代码。 */
     function announceBuild() {
       postHello({ version: CLIENT_BUILD })
     }
 
     /**
      * 把版面实测数字回报给宿主（只在数据变化时发一次）。
-     * 面板在真实页面里落在哪、为什么降级，靠这个在 `/quick-input/health` 里读出来。
+     * 面板在真实页面里落在哪、为什么降级，靠这个在 `/dsh-prompt-input/health` 里读出来。
      */
     let lastLayoutKey = ''
     function reportLayout(layout) {
@@ -1980,7 +2011,7 @@ window.__ModuleLoader__.load({
 
     function postHello(payload) {
       try {
-        const call = fetch(`${API}/hello`, {
+        const call = fetch(`${apiBase}/hello`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(payload),
@@ -2018,10 +2049,10 @@ window.__ModuleLoader__.load({
           if (typeof locale.subscribe === 'function') ctx.effect(() => locale.subscribe(sync))
         }
         ctx.slots.inject(TOGGLE_SLOT, () =>
-          ctx.slots.register({ name: TOGGLE_SLOT, id: 'quick-input-toggle', order: 4, locale: NS }, GuardedToggle),
+          ctx.slots.register({ name: TOGGLE_SLOT, id: 'dsh-prompt-input-toggle', order: 4, locale: NS }, GuardedToggle),
         )
         ctx.slots.inject(PANEL_SLOT, () =>
-          ctx.slots.register({ name: PANEL_SLOT, id: 'quick-input-panel', order: 20, locale: NS }, GuardedPanel),
+          ctx.slots.register({ name: PANEL_SLOT, id: 'dsh-prompt-input-panel', order: 20, locale: NS }, GuardedPanel),
         )
         // 全局快捷键（可选服务）：Ctrl/Cmd+Shift+K 开合面板。
         // 用 ctx.inject 而不是 inject 数组，profile 里没有 shortcuts 时插件照常工作。
@@ -2033,7 +2064,7 @@ window.__ModuleLoader__.load({
                 if (!shortcuts || typeof shortcuts.register !== 'function') return () => {}
                 try {
                   return shortcuts.register({
-                  id: 'quick-input.toggle',
+                  id: 'dsh-prompt-input.toggle',
                   label: () => tr('shortcutToggle'),
                   aliases: ['quick input', 'quick phrases', 'prompt pad', '快捷输入'],
                   defaults: {
@@ -2063,7 +2094,7 @@ window.__ModuleLoader__.load({
                   })
                 } catch (error) {
                   // 键位与别的命令冲突时 register 会抛错；快捷键没了不影响面板本身。
-                  console.warn('[quick-input] 快捷键注册失败：', error)
+                  console.warn('[dsh-prompt-input] 快捷键注册失败：', error)
                   return () => {}
                 }
               }, 'quick-input: shortcut')

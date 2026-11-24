@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.4.0 — 与上游隔离命名空间（可共存）
+
+0.3 之前虽然改了包名，但内部标识仍沿用上游的一套。有人同时装上游 `dsh-quick-input` 时会出现四种撞车：
+
+| 撞的是什么 | 之前 | 现在 |
+|---|---|---|
+| cordis 行 id | `quick-input` | `prompt-input` |
+| HTTP 路由 | `/quick-input/*` | `/dsh-prompt-input/*` |
+| 预设文件 | `$DSH_HOME/quick-input/presets.json` | `$DSH_HOME/dsh-prompt-input/presets.json` |
+| localStorage 键 | `quick-input.pos.v1` / `.recent.v1` | `dsh-prompt-input.*` |
+| 槽位 id / 快捷键 id | `quick-input-toggle` / `quick-input.toggle` | `dsh-prompt-input-*` / `dsh-prompt-input.toggle` |
+
+**数据不会丢**：
+
+- 宿主动手前会做一次迁移：新路径不存在、旧路径存在时，把旧预设规范化后复制到新路径，
+  **旧文件保留**（想回退随时可以）。
+- 浏览器半区读 localStorage 时先读新键、读不到再读旧键，用户的拖动位置和「最近使用」照旧。
+- 客户端请求失败或 404 时会自动退到旧路由 `/quick-input`，所以**宿主还没重启的那段时间也能用**。
+
+⚠️ 升级后建议重启一次 DSH：宿主半区（路由与迁移逻辑）不会热更新。
+
 ## 0.3.4 — 清理过时信息 + PNG 图标
 
 - **文案**：`package.json` 描述与插件内 aria/tooltip 里残留的「⊞」「常驻在输入框左边」「九宫格」

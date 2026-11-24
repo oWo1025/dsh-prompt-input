@@ -1,34 +1,37 @@
 /**
- * 快捷输入 —— 宿主半区。
+ * Prompt 面板 —— 宿主半区。
  *
  * 职责只有两件：
- *   1. 持有预设（$DSH_HOME/quick-input/presets.json），首次使用时写入默认种子；
- *   2. 用 ctx.webServer 注册 /quick-input/* 路由，给浏览器半区读、存预设。
+ *   1. 持有预设（$DSH_HOME/dsh-prompt-input/presets.json），首次使用时写入默认种子；
+ *   2. 用 ctx.webServer 注册 /dsh-prompt-input/* 路由，给浏览器半区读、存预设。
+ *
+ * 命名空间是独立的一套：路由、预设目录、槽位 id、localStorage 键都不与上游 dsh-quick-input 共用，
+ * 两个插件同时装也不会互相踩。旧路径的数据在启动时一次性迁移。
  *
  * 界面、点击、插入草稿全在浏览器半区（client.js）：那件事只有页面里做得了。
  * 设计约束：本文件不 import 任何 @deepseek-ai/* 包，只用 Node 内置模块 + 同目录 presets.js，
  * 这样宿主不会因为包解析不到而加载失败。
  */
 
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 
 import { defaultPresets, normalizePresets } from './presets.js'
 
 /** 插件名（诊断日志里显示）。 */
-export const name = 'quick-input'
+export const name = 'dsh-prompt-input'
 
 /** 与 package.json 对齐，只用于 /health 自证。 */
-const VERSION = '0.3.4'
+const VERSION = '0.4.0'
 
-const ROUTE_PATH = '/quick-input'
+const ROUTE_PATH = '/dsh-prompt-input'
 const BODY_LIMIT = 256 * 1024
 
 /** 取一个可用的日志对象；拿不到就退回 console。 */
 function makeLogger(ctx) {
   try {
-    const logger = typeof ctx.logger === 'function' ? ctx.logger('quick-input') : undefined
+    const logger = typeof ctx.logger === 'function' ? ctx.logger('dsh-prompt-input') : undefined
     if (logger && typeof logger.info === 'function') return logger
   } catch {
     /* 忽略：日志能力不该影响插件 */
@@ -36,10 +39,38 @@ function makeLogger(ctx) {
   return console
 }
 
-/** 预设文件位置：$DSH_HOME/quick-input/presets.json。 */
+/** 预设文件位置：$DSH_HOME/dsh-prompt-input/presets.json。 */
 function storeFile() {
   const home = process.env.DSH_HOME || join(homedir(), '.dsh')
+  return join(home, 'dsh-prompt-input', 'presets.json')
+}
+
+/** 0.3 及以前的位置（上游也用这个路径），仅用于一次性迁移。 */
+function legacyStoreFile() {
+  const home = process.env.DSH_HOME || join(homedir(), '.dsh')
   return join(home, 'quick-input', 'presets.json')
+}
+
+/**
+ * 把旧路径的预设复制到新路径（只在新文件不存在时做一次，旧文件保留不删）。
+ * 迁移失败不阻塞启动：读不到就用种子，用户仍是可用状态。
+ */
+function migrateStore(log) {
+  const next = storeFile()
+  const legacy = legacyStoreFile()
+  try {
+    if (existsSync(next) || !existsSync(legacy)) return
+    const normalized = normalizePresets(JSON.parse(readFileSync(legacy, 'utf8')))
+    if (normalized.pages.length === 0) return
+    mkdirSync(dirname(next), { recursive: true })
+    writeFileSync(next, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8')
+    log.info?.(`[dsh-prompt-input] 已迁移旧预设：${legacy} → ${next}（旧文件保留）`)
+  } catch (error) {
+    log.warn?.(
+      '[dsh-prompt-input] 迁移旧预设失败，将使用默认种子：',
+      error instanceof Error ? error.message : String(error),
+    )
+  }
 }
 
 /** 写 JSON 响应。 */
@@ -97,12 +128,12 @@ function readPresets(seed, log, options) {
     const parsed = JSON.parse(readFileSync(storeFile(), 'utf8'))
     const normalized = normalizePresets(parsed)
     if (normalized.pages.length > 0) return normalized
-    log.warn?.('[quick-input] 预设文件里没有有效页面，改用种子重建')
+    log.warn?.('[dsh-prompt-input] 预设文件里没有有效页面，改用种子重建')
   } catch (error) {
     const code = error && typeof error === 'object' ? error.code : undefined
     if (code !== 'ENOENT') {
       log.warn?.(
-        '[quick-input] 读预设失败，改用种子：',
+        '[dsh-prompt-input] 读预设失败，改用种子：',
         error instanceof Error ? error.message : String(error),
       )
     }
@@ -112,7 +143,7 @@ function readPresets(seed, log, options) {
   try {
     writePresets(rebuilt)
   } catch (error) {
-    log.warn?.('[quick-input] 种子落盘失败（不影响本次使用）：', error instanceof Error ? error.message : String(error))
+    log.warn?.('[dsh-prompt-input] 种子落盘失败（不影响本次使用）：', error instanceof Error ? error.message : String(error))
   }
   return rebuilt
 }
@@ -135,10 +166,13 @@ export function apply(ctx, rawConfig) {
   const log = makeLogger(ctx)
   const seed = seedFromConfig(rawConfig)
 
+  // 先迁移旧路径，后面的读取才有东西可用。
+  migrateStore(log)
+
   /** 浏览器半区最近一次报到：用于证明「页面正在跑哪一份客户端代码」。 */
   let lastClient = null
 
-  /** GET /quick-input/presets 读；POST 存。 */
+  /** GET /dsh-prompt-input/presets 读；POST 存。 */
   async function handleRequest(req, res) {
     let url
     try {
@@ -163,7 +197,7 @@ export function apply(ctx, rawConfig) {
         // 报到内容坏掉也无所谓，记一笔就好。
         lastClient = { version: 'unknown', at: Date.now(), layout: null }
       }
-      log.info?.(`[quick-input] 浏览器半区报到：${lastClient.version} ${JSON.stringify(lastClient.layout ?? {})}`)
+      log.info?.(`[dsh-prompt-input] 浏览器半区报到：${lastClient.version} ${JSON.stringify(lastClient.layout ?? {})}`)
       sendJson(res, 200, { ok: true, value: lastClient })
       return
     }
@@ -235,7 +269,7 @@ export function apply(ctx, rawConfig) {
           handler: (req, res) =>
             handleRequest(req, res).catch((error) => {
               log.warn?.(
-                '[quick-input] 请求处理失败：',
+                '[dsh-prompt-input] 请求处理失败：',
                 error instanceof Error ? error.message : String(error),
               )
               try {
@@ -245,9 +279,9 @@ export function apply(ctx, rawConfig) {
               }
             }),
         }),
-      'quick-input.route',
+      'dsh-prompt-input.route',
     )
   })
 
-  log.info?.(`[quick-input] 预设文件：${storeFile()}`)
+  log.info?.(`[dsh-prompt-input] 预设文件：${storeFile()}`)
 }
