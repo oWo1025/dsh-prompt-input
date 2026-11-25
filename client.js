@@ -30,7 +30,7 @@ window.__ModuleLoader__.load({
     const API_CANDIDATES = ['/dsh-prompt-input', '/quick-input']
 
     /** 客户端构建号：页面加载时回报给宿主，`GET /dsh-prompt-input/health` 里能看到跑的是哪一份。 */
-    const CLIENT_BUILD = '0.4.0+build1'
+    const CLIENT_BUILD = '0.4.3+build1'
 
     /** 文案命名空间：注册槽位时带上它，槽位就会把 `t` 交给组件。 */
     const NS = 'dsh-prompt-input'

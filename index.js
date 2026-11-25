@@ -23,7 +23,7 @@ import { defaultPresets, normalizePresets } from './presets.js'
 export const name = 'dsh-prompt-input'
 
 /** 与 package.json 对齐，只用于 /health 自证。 */
-const VERSION = '0.4.0'
+const VERSION = '0.4.3'
 
 const ROUTE_PATH = '/dsh-prompt-input'
 const BODY_LIMIT = 256 * 1024

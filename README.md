@@ -5,6 +5,12 @@
 DSH（DeepSeek Harness）的 Web 输入框插件：把常用的 prompt、话术、指令沉淀成**可见的卡片**，
 点叠卡图标打开气泡、点一张卡、文字落进草稿的光标处——不打断输入，不切窗口，不用再翻笔记。
 
+> **English** — A prompt pad beside the DSH composer. Open a popover from the stacked-cards icon,
+> search or click a saved phrase, and it is inserted at the caret as one undoable edit. Presets pages,
+> a recent-used page, hover preview, drag-to-reorder and a global hotkey. Fork of
+> [dsh-quick-input](https://github.com/cm860712ch-cloud/dsh-quick-input) (MIT); the UI layer is rewritten.
+> **Install** `dsh plugin --profile web add github:oWo1025/dsh-prompt-input` · the rest of this document is in Chinese.
+
 ![主面板](docs/01-main.png)
 
 <details>

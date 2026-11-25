@@ -1,6 +1,6 @@
 {
   "name": "dsh-prompt-input",
-  "version": "0.4.0",
+  "version": "0.4.3",
   "description": "Prompt 面板：点输入框工具行左侧的叠卡图标弹出气泡，搜索或点选预设短语，插入到草稿光标处（可撤销、不覆盖草稿）。Prompt pad beside the DSH composer: open a popover from the stacked-cards icon, search or click a saved phrase, and it is inserted at the caret as one undoable edit.",
   "type": "module",
   "license": "MIT",
